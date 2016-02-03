@@ -59,6 +59,7 @@ struct image_plane {
   int xstride;
   int ystride;
   unsigned char *data;
+  int *coeffs;
 };
 
 typedef struct image image;
@@ -215,6 +216,8 @@ static void jgpu_image_init(jpeg_gpu_ctx *ctx) {
     plane->ystride = plane->xstride*width;
     plane->data = (unsigned char *)malloc(height*plane->ystride);
     JGPU_ERROR(ctx, !plane->data, "Error allocating image plane memory.");
+    plane->coeffs = (int *)malloc(height*width*sizeof(*plane->coeffs));
+    JGPU_ERROR(ctx, !plane->coeffs, "Error allocating coeffs plane memory.");
     printf(" P[%i]: %ix%i, xdec = %i, ydec = %i, xstride = %i, ystride = %i\n",
      i, width, height, plane->xdec, plane->ydec, plane->xstride, plane->ystride);
     frame->plane[i].plane = plane; 
@@ -225,6 +228,7 @@ static void jgpu_image_clear(jpeg_gpu_ctx *ctx) {
   int i;
   for (i = 0; i < NPLANES_MAX; i++) {
     free(ctx->img.plane[i].data);
+    free(ctx->img.plane[i].coeffs);
   }
 }
 
@@ -738,6 +742,7 @@ static void jgpu_fill_bits(jpeg_gpu_ctx *ctx, int bits) {
   } \
   while (0)
 
+
 static void jgpu_decode_scan(jpeg_gpu_ctx *ctx) {
   int mcu_counter;
   int rst_counter;
@@ -761,7 +766,8 @@ static void jgpu_decode_scan(jpeg_gpu_ctx *ctx) {
             int block[64];
             int symbol;
             int value;
-            int j;
+            int j, k;
+            int *coeffs;
             memset(block, 0, sizeof(block));
             JGPU_DECODE_VLC(ctx, &ctx->dc_huff[comp->td], symbol, value);
             printf("dc = %i\n", value);
@@ -785,10 +791,14 @@ static void jgpu_decode_scan(jpeg_gpu_ctx *ctx) {
 	    for (j = 1; j <= 64; j++) {
 	      printf("%5i%s", block[j - 1], j & 0x7 ? ", " : "\n");
 	    }
-            /*unsigned char *block;
-            block = ip->data + 
-             ((mby*pi->vsamp + sby)*ip->ystride << 3) + 
-             ((mbx*pi->hsamp + sbx)*ip->xstride << 3);*/
+            coeffs = ip->coeffs +
+             ((mby*pi->vsamp + sby)*pi->width << 3) +
+             ((mbx*pi->hsamp + sbx) << 3);
+            for (k = 0; k < 8; k++) {
+              for (j = 0; j < 8; j++) {
+                coeffs[k*pi->width + j] = block[k*8 + j];
+              }
+            }
           }
         }
       }
