@@ -287,26 +287,6 @@ static void jgpu_clear(jpeg_gpu_ctx *ctx) {
   jgpu_image_clear(ctx);
 }
 
-#if 0
-static void jgpu_skip_bytes(jpeg_gpu_ctx *ctx, int bytes) {
-  JGPU_ERROR(ctx, ctx->size < bytes, "Error skipping past the end of file.");
-  ctx->pos += bytes;
-  ctx->size -= bytes;
-}
-
-static void jgpu_decode_byte(jpeg_gpu_ctx *ctx, unsigned char *ret) {
-  JGPU_ERROR(ctx, ctx->size < 1, "Error reading past the end of file.");
-  *ret = ctx->pos[0];
-  jgpu_skip_bytes(ctx, 1);
-}
-
-static void jgpu_decode_short(jpeg_gpu_ctx *ctx, unsigned short *ret) {
-  JGPU_ERROR(ctx, ctx->size < 2, "Error reading past the end of file.");
-  *ret = (ctx->pos[0] << 8) | ctx->pos[1];
-  jgpu_skip_bytes(ctx, 2);
-}
-#endif
-
 #define JGPU_SKIP_BYTES(ctx, nbytes) \
   do { \
     JGPU_ERROR(ctx, (ctx)->size < nbytes, \
@@ -380,6 +360,51 @@ static void jgpu_decode_short(jpeg_gpu_ctx *ctx, unsigned short *ret) {
     JGPU_ERROR(ctx, (ctx)->bits < nbits, "Error not enough bits to get."); \
     ret = (((ctx)->bitbuf >> ((ctx)->bits - (nbits))) & ((1 << (nbits)) - 1)); \
     (ctx)->bits -= nbits; \
+  } \
+  while (0)
+
+#define JGPU_DECODE_HUFF(ctx, huff, symbol) \
+  do { \
+    int bits; \
+    int value; \
+    int code; \
+    JGPU_FILL_BITS(ctx, 2*LOOKUP_BITS); \
+    JGPU_PEEK_BITS(ctx, LOOKUP_BITS, value); \
+    printf("lookup = %2x\n", value); \
+    symbol = (huff)->lookup[value]; \
+    bits = symbol >> LOOKUP_BITS; \
+    code = value >> (LOOKUP_BITS - bits); \
+    symbol &= (1 << LOOKUP_BITS) - 1; \
+    JGPU_SKIP_BITS(ctx, bits); \
+    printf("bits = %i, code = %02X, symbol = %02x\n", bits, code, symbol); \
+    if (bits > LOOKUP_BITS) { \
+      value = ((ctx)->bitbuf >> (ctx)->bits) & ((1 << bits) - 1); \
+      printf("starting value = %X\n", value); \
+      printf("maxcode->bits[%i] = %i\n", bits, (huff)->maxcode[bits - 1]); \
+      while (value > (huff)->maxcode[bits - 1]) { \
+        int bit; \
+        JGPU_DECODE_BITS(ctx, 1, bit); \
+        value = (value << 1) | bit; \
+        bits++; \
+      } \
+      symbol = (huff)->symbol[value + (huff)->index[bits - 1]]; \
+      printf("bits = %i, code = %02X, symbol = %02x\n", bits, value, symbol); \
+    } \
+  } \
+  while (0)
+
+#define JGPU_DECODE_VLC(ctx, huff, symbol, value) \
+  do { \
+    int len; \
+    JGPU_DECODE_HUFF(ctx, huff, symbol); \
+    len = symbol & 0xf; \
+    JGPU_DECODE_BITS(ctx, len, value); \
+    printf("len = %i\n", len); \
+    if (value < 1 << (len - 1)) { \
+      value += 1 - (1 << len); \
+    } \
+    printf("vlc = %i\n", value); \
+    printf("\n"); \
   } \
   while (0)
 
@@ -668,80 +693,6 @@ static void jgpu_decode_sos(jpeg_gpu_ctx *ctx) {
   len -= 3;
   JGPU_ERROR(ctx, len != 0, "Error decoding SOS, unprocessed bytes.");
 }
-
-#if 0
-static void jgpu_decode_block(jpeg_gpu_ctx *ctx, jpeg_gpu_scan_component *comp,
- unsigned char *block) {
-
-}
-
-
-
-static void jgpu_skip_bits(jpeg_gpu_ctx *ctx, int bits) {
-  JGPU_ERROR(ctx, ctx->bits < bits, "Error not enough bits to skip.");
-  ctx->bits -= bits;
-}
-
-static int jgpu_decode_vlc(jpeg_gpu_ctx *ctx, jpeg_gpu_huff *huff) {
-  return 0;
-}
-
-static void jgpu_fill_bits(jpeg_gpu_ctx *ctx, int bits) {
-  while (ctx->bits < bits) {
-    unsigned char byte;
-    JGPU_DECODE_BYTE(ctx, byte);
-    ctx->bits += 8;
-    ctx->bitbuf = (ctx->bitbuf << 8) | byte;
-  }
-}
-
-#endif
-
-#define JGPU_DECODE_HUFF(ctx, huff, symbol) \
-  do { \
-    int bits; \
-    int value; \
-    int code; \
-    JGPU_FILL_BITS(ctx, 2*LOOKUP_BITS); \
-    JGPU_PEEK_BITS(ctx, LOOKUP_BITS, value); \
-    printf("lookup = %2x\n", value); \
-    symbol = (huff)->lookup[value]; \
-    bits = symbol >> LOOKUP_BITS; \
-    code = value >> (LOOKUP_BITS - bits); \
-    symbol &= (1 << LOOKUP_BITS) - 1; \
-    JGPU_SKIP_BITS(ctx, bits); \
-    printf("bits = %i, code = %02X, symbol = %02x\n", bits, code, symbol); \
-    if (bits > LOOKUP_BITS) { \
-      value = ((ctx)->bitbuf >> (ctx)->bits) & ((1 << bits) - 1); \
-      printf("starting value = %X\n", value); \
-      printf("maxcode->bits[%i] = %i\n", bits, (huff)->maxcode[bits - 1]); \
-      while (value > (huff)->maxcode[bits - 1]) { \
-        int bit; \
-	JGPU_DECODE_BITS(ctx, 1, bit); \
-        value = (value << 1) | bit; \
-	bits++; \
-      } \
-      symbol = (huff)->symbol[value + (huff)->index[bits - 1]]; \
-      printf("bits = %i, code = %02X, symbol = %02x\n", bits, value, symbol); \
-    } \
-  } \
-  while (0)
-
-#define JGPU_DECODE_VLC(ctx, huff, symbol, value) \
-  do { \
-    int len; \
-    JGPU_DECODE_HUFF(ctx, huff, symbol); \
-    len = symbol & 0xf; \
-    JGPU_DECODE_BITS(ctx, len, value); \
-    printf("len = %i\n", len); \
-    if (value < 1 << (len - 1)) { \
-      value += 1 - (1 << len); \
-    } \
-    printf("vlc = %i\n", value); \
-    printf("\n"); \
-  } \
-  while (0)
-
 
 static void jgpu_decode_scan(jpeg_gpu_ctx *ctx) {
   int mcu_counter;
