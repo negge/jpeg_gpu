@@ -198,6 +198,8 @@ static void jgpu_image_init(jpeg_gpu_ctx *ctx) {
   frame = &ctx->frame;
   JGPU_ERROR(ctx, !frame->valid,
    "Error, must see SOF before initializing image data.");
+  ctx->img.width = frame->pic_width;
+  ctx->img.height = frame->pic_height;
   for (i = 0; i < frame->nplanes; i++) {
     image_plane *plane;
     int width;
