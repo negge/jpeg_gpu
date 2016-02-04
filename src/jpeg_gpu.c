@@ -58,6 +58,8 @@ struct image_plane {
   unsigned char ydec;
   int xstride;
   int ystride;
+  unsigned short width;
+  unsigned short height;
   unsigned char *data;
   int *coeffs;
 };
@@ -88,8 +90,6 @@ struct jpeg_gpu_plane_info {
   /* */
   unsigned char tq;
 
-  unsigned short width;
-  unsigned short height;
   image_plane *plane;
 };
 
@@ -202,26 +202,26 @@ static void jgpu_image_init(jpeg_gpu_ctx *ctx) {
   ctx->img.height = frame->pic_height;
   for (i = 0; i < frame->nplanes; i++) {
     image_plane *plane;
-    int width;
-    int height;
     plane = &ctx->img.plane[i];
     plane->bitdepth = frame->bits;
     plane->xdec = OD_ILOG(frame->hmax) - OD_ILOG(frame->plane[i].hsamp);
     plane->ydec = OD_ILOG(frame->vmax) - OD_ILOG(frame->plane[i].vsamp);
     /* Compute the component dimensions */
-    width = frame->pic_width * frame->plane[i].hsamp / frame->hmax;
-    height = frame->pic_height * frame->plane[i].vsamp / frame->vmax;
+    plane->width = frame->pic_width*frame->plane[i].hsamp/frame->hmax;
+    plane->height = frame->pic_height*frame->plane[i].vsamp/frame->vmax;
     /* Pad out to the next block of 8 pixels */
-    width = PAD_POWER2(width, 3);
-    height = PAD_POWER2(height, 3);
+    plane->width = PAD_POWER2(plane->width, 3);
+    plane->height = PAD_POWER2(plane->height, 3);
     plane->xstride = plane->bitdepth >> 3;
-    plane->ystride = plane->xstride*width;
-    plane->data = (unsigned char *)malloc(height*plane->ystride);
+    plane->ystride = plane->xstride*plane->width;
+    plane->data = (unsigned char *)malloc(plane->height*plane->ystride);
     JGPU_ERROR(ctx, !plane->data, "Error allocating image plane memory.");
-    plane->coeffs = (int *)malloc(height*width*sizeof(*plane->coeffs));
+    plane->coeffs =
+     (int *)malloc(plane->height*plane->width*sizeof(*plane->coeffs));
     JGPU_ERROR(ctx, !plane->coeffs, "Error allocating coeffs plane memory.");
     printf(" P[%i]: %ix%i, xdec = %i, ydec = %i, xstride = %i, ystride = %i\n",
-     i, width, height, plane->xdec, plane->ydec, plane->xstride, plane->ystride);
+     i, plane->width, plane->height, plane->xdec, plane->ydec, plane->xstride,
+     plane->ystride);
     frame->plane[i].plane = plane; 
   }
 }
@@ -876,11 +876,11 @@ static void jgpu_decode_scan(jpeg_gpu_ctx *ctx) {
 	      printf("%5i%s", block[j - 1], j & 0x7 ? ", " : "\n");
 	    }
             coeffs = ip->coeffs +
-             ((mby*pi->vsamp + sby)*pi->width << 3) +
+             ((mby*pi->vsamp + sby)*ip->width << 3) +
              ((mbx*pi->hsamp + sbx) << 3);
             for (k = 0; k < 8; k++) {
               for (j = 0; j < 8; j++) {
-                coeffs[k*pi->width + j] = block[k*8 + j];
+                coeffs[k*ip->width + j] = block[k*8 + j];
               }
             }
             od_bin_idct8x8(block, 8, block, 8);
