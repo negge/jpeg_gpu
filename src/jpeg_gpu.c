@@ -50,6 +50,11 @@ int od_ilog(uint32_t _v) {
 
 #define PAD_POWER2(x, b) ((x + ((1 << b) - 1)) & ~((1 << b) - 1))
 
+/*Clamps a signed integer between 0 and 255, returning an unsigned char.
+  This assumes a char is 8 bits.*/
+#define OD_CLAMP255(x) \
+ ((unsigned char)((((x) < 0) - 1) & ((x) | -((x) > 255))))
+
 typedef struct image_plane image_plane;
 
 struct image_plane {
@@ -852,6 +857,7 @@ static void jgpu_decode_scan(jpeg_gpu_ctx *ctx) {
             int value;
             int j, k;
             int *coeffs;
+            unsigned char *data;
             memset(block, 0, sizeof(block));
             JGPU_DECODE_VLC(ctx, &ctx->dc_huff[comp->td], symbol, value);
             printf("dc = %i\n", value);
@@ -884,6 +890,14 @@ static void jgpu_decode_scan(jpeg_gpu_ctx *ctx) {
               }
             }
             od_bin_idct8x8(block, 8, block, 8);
+            data = ip->data +
+             ((mby*pi->vsamp + sby)*ip->ystride << 3) +
+             ((mbx*pi->hsamp + sbx)*ip->xstride << 3);
+            for (k = 0; k < 8; k++) {
+              for (j = 0; j < 8; j++) {
+                data[k*ip->ystride + j] = OD_CLAMP255(block[k*8 + j] + 128);
+              }
+            }
           }
         }
       }
@@ -1001,15 +1015,79 @@ int main(int argc, const char *argv[]) {
   if (jgpu_init(&ctx, argv[1])) {
     return EXIT_FAILURE;
   }
-  /*if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+  if (SDL_Init(SDL_INIT_VIDEO) != 0) {
     printf("Unable to initialize SDL: %s\n", SDL_GetError());
     return EXIT_FAILURE;
-  }*/
+  }
   jgpu_decode(&ctx);
   if (ctx.error) {
     fprintf(stderr, "%s\n", ctx.error);
   }
+  else {
+    SDL_Surface *screen;
+    image *img;
+    int done;
+    done = 0;
+    img = &ctx.img;
+    fprintf(stderr, "width = %i, height = %i\n", img->width, img->height);
+    screen = SDL_SetVideoMode(img->width, img->height, 24, SDL_HWSURFACE);
+    if (!screen) {
+      done = 1;
+    }
+    while (!done) {
+      int i;
+      int j;
+      SDL_Event event;
+      /* paint the screen */
+      for (j = 0; j < img->height; j++) {
+        unsigned char *pixels;
+        pixels = screen->pixels;
+        pixels += j*screen->pitch;
+        for (i = 0; i < img->width; i++) {
+          if (img->nplanes == 1) {
+            pixels[0] = pixels[1] = pixels[2] =
+             img->plane[0].data[j*img->plane[0].ystride + i];
+          }
+          else {
+            unsigned char r;
+            unsigned char g;
+            unsigned char b;
+            int y;
+            int cb;
+            int cr;
+            /* This assumes 8-bit and no decimation on the Y plane */
+            y = img->plane[0].data[j*img->plane[0].ystride + i];
+            cb = img->plane[1].data[(i >> img->plane[1].xdec) +
+             (j >> img->plane[1].ydec)*img->plane[1].ystride] - 128;
+            cr = img->plane[2].data[(i >> img->plane[2].xdec) +
+             (j >> img->plane[2].ydec)*img->plane[2].ystride] - 128;
+            /* TODO rewrite this color conversion code in fixed point */
+            r = OD_CLAMP255(((int)(y + 1.402*cr)));
+            g = OD_CLAMP255(((int)(y - 0.34414*cb - 0.71414*cr)));
+            b = OD_CLAMP255(((int)(y + 1.1772*cb)));
+            pixels[0] = b;
+            pixels[1] = g;
+            pixels[2] = r;
+          }
+          pixels += 3;
+        }
+      }
+      SDL_Flip(screen);
+      while (SDL_PollEvent(&event)) {
+        switch (event.type) {
+            case SDL_QUIT : {
+            done = 1;
+            break;
+          }
+          case SDL_KEYDOWN : {
+            done = 1;
+            break;
+          }
+        }
+      }
+    }
+  }
   jgpu_clear(&ctx);
-  /*SDL_Quit();*/
+  SDL_Quit();
   return EXIT_SUCCESS;
 }
