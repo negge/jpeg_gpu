@@ -272,6 +272,8 @@ int main(int argc, char *argv[]) {
     GLuint prog;
     GLuint vbo;
     GLuint vao;
+    double last;
+    int frames;
     int i;
     int first;
 
@@ -376,13 +378,16 @@ int main(int argc, char *argv[]) {
     }
 
     glBindFragDataLocation(prog, 0, "color");
+    glUseProgram(prog);
 
     first = 0;
-    glUseProgram(prog);
+    last = glfwGetTime();
+    frames = 0;
     while (!glfwWindowShouldClose(window)) {
       struct jpeg_decompress_struct cinfo;
       struct jpeg_error_mgr jerr;
       int i;
+      double time;
 
       /* This code assumes 4:2:0 */
       JSAMPROW yrow_pointer[16];
@@ -456,6 +461,16 @@ int main(int argc, char *argv[]) {
       glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
       glfwSwapBuffers(window);
+
+      frames++;
+      time = glfwGetTime();
+      if (time - last >= 1.0) {
+        char title[255];
+        sprintf(title, "%s - [FPS %4i]", NAME, frames);
+        glfwSetWindowTitle(window, title);
+        frames = 0;
+        last = time;
+      }
 
       glfwPollEvents();
     }
