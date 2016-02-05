@@ -411,10 +411,12 @@ int main(int argc, char *argv[]) {
 
         for (i = 0; i < img.nplanes; i++) {
           image_plane *plane;
+          int y_off;
           plane = &img.plane[i];
+          y_off = cinfo.output_scanline >> plane->ydec;
           for (j = 0; j < 16 >> plane->ydec; j++) {
             plane_pointer[i][j]=
-             &plane->data[((cinfo.output_scanline >> plane->ydec) + j)*plane->width];
+             &plane->data[(y_off + j)*plane->width];
           }
         }
 
