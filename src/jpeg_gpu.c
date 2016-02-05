@@ -1039,8 +1039,8 @@ static const char MEM_FRAG[]="\
 #version 130\n\
 uniform sampler2D myTexture;\n\
 void main() {\n\
-  int x=int(gl_FragCoord.x);\n\
-  int y=int(gl_FragCoord.y);\n\
+  int x=int(gl_TexCoord[0].s);\n\
+  int y=int(gl_TexCoord[0].t);\n\
   gl_FragColor=texelFetch(myTexture,ivec2(x,y),0);\n\
 }";
 
@@ -1201,7 +1201,6 @@ int main(int argc, const char *argv[]) {
 
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_LIGHTING);
-    glEnable(GL_TEXTURE_2D);
 
     glActiveTexture(GL_TEXTURE0);
     glGenTextures(1, &tex);
