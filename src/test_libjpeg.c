@@ -9,28 +9,33 @@
 
 #define NAME "test_libjpeg"
 
-#if 0
-  y=30.0;\n\
-  u=100.0;\n\
-  v=200.0;\n\
-
-#endif
+static const char YUV_VERT[]="\
+#version 130\n\
+in vec3 in_pos;\n\
+in ivec2 in_tex;\n\
+out vec2 out_tex;\n\
+void main() {\n\
+  gl_Position = vec4(in_pos.x, in_pos.y, in_pos.z, 1.0);\n\
+  out_tex = vec2(in_tex);\n\
+}";
 
 static const char YUV_FRAG[]="\
 #version 130\n\
+in vec2 out_tex;\n\
+out vec4 color;\n\
 uniform sampler2D y_tex;\n\
 uniform sampler2D u_tex;\n\
 uniform sampler2D v_tex;\n\
 void main() {\n\
-  int s=int(gl_TexCoord[0].s);\n\
-  int t=int(gl_TexCoord[0].t);\n\
+  int s=int(out_tex.s);\n\
+  int t=int(out_tex.t);\n\
   float y=texelFetch(y_tex,ivec2(s,t),0).r;\n\
   float u=texelFetch(u_tex,ivec2(s>>1,t>>1),0).r;\n\
   float v=texelFetch(v_tex,ivec2(s>>1,t>>1),0).r;\n\
   float r=y+1.402*(v-0.5);\n\
   float g=y-0.34414*(u-0.5)-0.71414*(v-0.5);\n\
   float b=y+1.772*(u-0.5);\n\
-  gl_FragColor=vec4(r,g,b,1.0);\n\
+  color=vec4(r,g,b,1.0);\n\
 }";
 
 typedef struct image_plane image_plane;
@@ -53,6 +58,13 @@ struct image {
   unsigned short height;
   int nplanes;
   image_plane plane[NPLANES_MAX];
+};
+
+typedef struct vertex vertex;
+
+struct vertex {
+  GLfloat x, y, z;
+  GLint s, t;
 };
 
 int od_ilog(uint32_t _v) {
@@ -92,44 +104,53 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action,
 }
 
 /* Compile the shader fragment. */
-static GLint load_shader(GLuint *_shad,const char *_src) {
+static GLint load_shader(GLuint *_shad,GLenum _shader,const char *_src) {
   int    len;
   GLuint shad;
   GLint  status;
-  len=strlen(_src);
-  shad=glCreateShader(GL_FRAGMENT_SHADER);
-  glShaderSource(shad,1,&_src,&len);
+  len = strlen(_src);
+  shad = glCreateShader(_shader);
+  glShaderSource(shad, 1, &_src, &len);
   glCompileShader(shad);
-  glGetShaderiv(shad,GL_COMPILE_STATUS,&status);
-  if (status!=GL_TRUE) {
+  glGetShaderiv(shad, GL_COMPILE_STATUS, &status);
+  if (status != GL_TRUE) {
     char info[8192];
-    glGetShaderInfoLog(shad,8192,NULL,info);
-    printf("Failed to compile fragment shader.\n%s\n",info);
+    glGetShaderInfoLog(shad, 8192, NULL, info);
+    printf("Failed to compile fragment shader.\n%s\n", info);
     return GL_FALSE;
   }
-  *_shad=shad;
+  *_shad = shad;
   return GL_TRUE;
 }
 
-static GLint setup_shader(GLuint *_prog,const char *_src) {
-  GLuint shad;
+static GLint setup_shader(GLuint *_prog,const char *_vert,const char *_frag) {
   GLuint prog;
   GLint  status;
-  if (!load_shader(&shad,_src)) {
-    return GL_FALSE;
+  prog = glCreateProgram();
+  if (_vert!=NULL) {
+    GLuint vert;
+    if (!load_shader(&vert, GL_VERTEX_SHADER, _vert)) {
+      return GL_FALSE;
+    }
+    glAttachShader(prog, vert);
   }
-  prog=glCreateProgram();
-  glAttachShader(prog,shad);
+  if (_frag!=NULL) {
+    GLuint frag;
+    if (!load_shader(&frag, GL_FRAGMENT_SHADER, _frag)) {
+      return GL_FALSE;
+    }
+    glAttachShader(prog, frag);
+  }
   glLinkProgram(prog);
-  glGetProgramiv(prog,GL_LINK_STATUS,&status);
-  if (status!=GL_TRUE) {
+  glGetProgramiv(prog, GL_LINK_STATUS, &status);
+  if (status != GL_TRUE) {
     char info[8192];
-    glGetProgramInfoLog(prog,8192,NULL,info);
-    printf("Failed to link program.\n%s\n",info);
+    glGetProgramInfoLog(prog, 8192, NULL, info);
+    printf("Failed to link program.\n%s\n", info);
     return GL_FALSE;
   }
   glUseProgram(prog);
-  *_prog=prog;
+  *_prog = prog;
   return GL_TRUE;
 }
 
@@ -249,6 +270,8 @@ int main(int argc, char *argv[]) {
     GLFWwindow *window;
     GLuint tex[NPLANES_MAX];
     GLuint prog;
+    GLuint vbo;
+    GLuint vao;
     int i;
     int first;
 
@@ -277,16 +300,6 @@ int main(int argc, char *argv[]) {
 
     glViewport(0, 0, img.width, img.height);
 
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(0, img.width, img.height, 0, 0, 1);
-
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-
-    glDisable(GL_DEPTH_TEST);
-    glDisable(GL_LIGHTING);
-
     glGenTextures(img.nplanes, tex);
     for (i = 0; i < img.nplanes; i++) {
       image_plane *plane;
@@ -305,7 +318,7 @@ int main(int argc, char *argv[]) {
         break;
       }
       case 3 : {
-        if (!setup_shader(&prog, YUV_FRAG)) {
+        if (!setup_shader(&prog, YUV_VERT, YUV_FRAG)) {
           return EXIT_FAILURE;
         }
         if (!bind_texture(prog, "y_tex", 0)) {
@@ -320,6 +333,49 @@ int main(int argc, char *argv[]) {
         break;
       }
     }
+
+    /* Create the vertex buffer object */
+    {
+      GLint in_pos;
+      GLint in_tex;
+      vertex v[4];
+
+      in_pos = glGetAttribLocation(prog, "in_pos");
+      printf("in_pos %i\n", in_pos);
+
+      in_tex = glGetAttribLocation(prog, "in_tex");
+      printf("in_tex %i\n", in_tex);
+
+      /* Set the vertex world positions */
+      v[0].x =  1.0; v[0].y =  1.0; v[1].z = 0.0;
+      v[1].x =  1.0; v[1].y = -1.0; v[2].z = 0.0;
+      v[2].x = -1.0; v[2].y =  1.0; v[0].z = 0.0;
+      v[3].x = -1.0; v[3].y = -1.0; v[3].z = 0.0;
+
+      /* Set the vertex texture coordinates */
+      v[0].s = img.width; v[0].t = 0;
+      v[1].s = img.width; v[1].t = img.height;
+      v[2].s = 0;         v[2].t = 0;
+      v[3].s = 0;         v[3].t = img.height;
+
+      glGenVertexArrays(1, &vao);
+      glBindVertexArray(vao);
+
+      glGenBuffers(1, &vbo);
+      glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+      glBufferData(GL_ARRAY_BUFFER, sizeof(v), v, GL_STATIC_DRAW);
+
+      glVertexAttribPointer(in_pos, 3, GL_FLOAT, GL_FALSE, sizeof(vertex),
+       (void *)0);
+
+      glVertexAttribIPointer(in_tex, 2, GL_INT, sizeof(vertex), (void *)12);
+
+      glEnableVertexAttribArray(in_pos);
+      glEnableVertexAttribArray(in_tex);
+    }
+
+    glBindFragDataLocation(prog, 0, "color");
 
     first = 0;
     glUseProgram(prog);
@@ -395,16 +451,7 @@ int main(int argc, char *argv[]) {
 
       glClear(GL_COLOR_BUFFER_BIT);
 
-      glBegin(GL_QUADS);
-      glTexCoord2i(0, 0);
-      glVertex2i(0, 0);
-      glTexCoord2i(img.width, 0);
-      glVertex2i(img.width, 0);
-      glTexCoord2i(img.width, img.height);
-      glVertex2i(img.width, img.height);
-      glTexCoord2i(0, img.height);
-      glVertex2i(0, img.height);
-      glEnd();
+      glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
       glfwSwapBuffers(window);
 
