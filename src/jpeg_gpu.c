@@ -1191,6 +1191,9 @@ int main(int argc, const char *argv[]) {
     glfwSetKeyCallback(window, key_callback);
     glfwSwapInterval(0);
 
+    printf("OpenGL: %s\n",glGetString(GL_VERSION));
+    printf("  GLSL: %s\n",glGetString(GL_SHADING_LANGUAGE_VERSION));
+
     glViewport(0, 0, img->width, img->height);
 
     glMatrixMode(GL_PROJECTION);
