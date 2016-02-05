@@ -258,6 +258,8 @@ int main(int argc, char *argv[]) {
     }
 
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
     window = glfwCreateWindow(img.width, img.height, NAME, NULL, NULL);
     if (!window) {
       glfwTerminate();
