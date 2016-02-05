@@ -14,6 +14,14 @@
 
 #define LOOKUP_BITS (8)
 
+#define LOGGING_ENABLED (0)
+
+#if LOGGING_ENABLED
+# define JGPU_LOG(a) printf a
+#else
+# define JGPU_LOG(a) (void)0
+#endif
+
 #define JGPU_ERROR(ctx, cond, err) \
   do { \
     if (cond) { \
@@ -225,9 +233,10 @@ static void jgpu_image_init(jpeg_gpu_ctx *ctx) {
     plane->coeffs =
      (int *)malloc(plane->height*plane->width*sizeof(*plane->coeffs));
     JGPU_ERROR(ctx, !plane->coeffs, "Error allocating coeffs plane memory.");
-    printf(" P[%i]: %ix%i, xdec = %i, ydec = %i, xstride = %i, ystride = %i\n",
+    JGPU_LOG((
+     " P[%i]: %ix%i, xdec = %i, ydec = %i, xstride = %i, ystride = %i\n",
      i, plane->width, plane->height, plane->xdec, plane->ydec, plane->xstride,
-     plane->ystride);
+     plane->ystride));
     frame->plane[i].plane = plane; 
   }
 }
@@ -375,20 +384,19 @@ static void jgpu_clear(jpeg_gpu_ctx *ctx) {
   do { \
     int bits; \
     int value; \
-    int code; \
     JGPU_FILL_BITS(ctx, 2*LOOKUP_BITS); \
     JGPU_PEEK_BITS(ctx, LOOKUP_BITS, value); \
-    printf("lookup = %2x\n", value); \
+    JGPU_LOG(("lookup = %2x\n", value)); \
     symbol = (huff)->lookup[value]; \
     bits = symbol >> LOOKUP_BITS; \
-    code = value >> (LOOKUP_BITS - bits); \
     symbol &= (1 << LOOKUP_BITS) - 1; \
     JGPU_SKIP_BITS(ctx, bits); \
-    printf("bits = %i, code = %02X, symbol = %02x\n", bits, code, symbol); \
+    JGPU_LOG(("bits = %i, code = %02X, symbol = %02x\n", bits, \
+     value >> (LOOKUP_BITS - bits), symbol)); \
     if (bits > LOOKUP_BITS) { \
       value = ((ctx)->bitbuf >> (ctx)->bits) & ((1 << bits) - 1); \
-      printf("starting value = %X\n", value); \
-      printf("maxcode->bits[%i] = %i\n", bits, (huff)->maxcode[bits - 1]); \
+      JGPU_LOG(("starting value = %X\n", value)); \
+      JGPU_LOG(("maxcode->bits[%i] = %i\n", bits, (huff)->maxcode[bits - 1])); \
       while (value > (huff)->maxcode[bits - 1]) { \
         int bit; \
         JGPU_DECODE_BITS(ctx, 1, bit); \
@@ -396,7 +404,8 @@ static void jgpu_clear(jpeg_gpu_ctx *ctx) {
         bits++; \
       } \
       symbol = (huff)->symbol[value + (huff)->index[bits - 1]]; \
-      printf("bits = %i, code = %02X, symbol = %02x\n", bits, value, symbol); \
+      JGPU_LOG(("bits = %i, code = %02X, symbol = %02x\n", bits, \
+       value >> (LOOKUP_BITS - bits), symbol)); \
     } \
   } \
   while (0)
@@ -407,19 +416,19 @@ static void jgpu_clear(jpeg_gpu_ctx *ctx) {
     JGPU_DECODE_HUFF(ctx, huff, symbol); \
     len = symbol & 0xf; \
     JGPU_DECODE_BITS(ctx, len, value); \
-    printf("len = %i\n", len); \
+    JGPU_LOG(("len = %i\n", len)); \
     if (value < 1 << (len - 1)) { \
       value += 1 - (1 << len); \
     } \
-    printf("vlc = %i\n", value); \
-    printf("\n"); \
+    JGPU_LOG(("vlc = %i\n", value)); \
+    JGPU_LOG(("\n")); \
   } \
   while (0)
 
 static void jgpu_skip_marker(jpeg_gpu_ctx *ctx) {
   unsigned short len;
   JGPU_DECODE_SHORT(ctx, len);
-  printf(" skipping length %i\n", len - 2);
+  JGPU_LOG((" skipping length %i\n", len - 2));
   JGPU_SKIP_BYTES(ctx, len - 2);
 }
 
@@ -441,7 +450,7 @@ static void jgpu_decode_dqt(jpeg_gpu_ctx *ctx) {
     quant = &ctx->quant[tq];
     quant->valid = 1;
     quant->bits = pq ? 16 : 8;
-    printf("Reading Quantization Table %i (%i-bit)\n", tq, quant->bits);
+    JGPU_LOG(("Reading Quantization Table %i (%i-bit)\n", tq, quant->bits));
     for (i = 0; i < 64; i++) {
       if (pq) {
         JGPU_DECODE_SHORT(ctx, quant->tbl[i]);
@@ -452,9 +461,11 @@ static void jgpu_decode_dqt(jpeg_gpu_ctx *ctx) {
       /*quant->tbl[i] = pq ? jgpu_decode_short(ctx) : jgpu_decode_byte(ctx);*/
     }
     len -= 65 + 64*pq;
+#if LOGGING_ENABLED
     for (i = 1; i <= 64; i++) {
       printf("%i%s", quant->tbl[ZIG_ZAG[i - 1]], i & 0x7 ? ", " : "\n");
     }
+#endif
   }
   JGPU_ERROR(ctx, len != 0, "Error decoding DQT, unprocessed bytes.");
 }
@@ -477,8 +488,8 @@ static void jgpu_decode_sof(jpeg_gpu_ctx *ctx) {
   JGPU_DECODE_SHORT(ctx, frame->pic_width);
   JGPU_ERROR(ctx, frame->pic_width == 0, "Error SOF has invalid width.");
   JGPU_DECODE_BYTE(ctx, frame->nplanes);
-  printf("bits = %i, height = %i, width = %i, nplanes = %i\n",
-   frame->bits, frame->pic_height, frame->pic_width, frame->nplanes);
+  JGPU_LOG(("bits = %i, height = %i, width = %i, nplanes = %i\n",
+   frame->bits, frame->pic_height, frame->pic_width, frame->nplanes));
   JGPU_ERROR(ctx, frame->nplanes != 1 && frame->nplanes != 3,
    "Error only frames with 1 or 3 components supported");
   len -= 6;
@@ -525,10 +536,11 @@ static void jgpu_decode_sof(jpeg_gpu_ctx *ctx) {
   /* Compute the number of horizontal and vertical MCU blocks for the frame. */
   frame->nhmb = (frame->pic_width + mbw - 1)/mbw;
   frame->nvmb = (frame->pic_height + mbh - 1)/mbh;
-  printf("hmax = %i, vmax = %i, mbw = %i, mbh = %i, nhmb = %i, nvmb = %i\n",
-   frame->hmax, frame->vmax, mbw, mbh, frame->nhmb, frame->nvmb);
+  JGPU_LOG(("hmax = %i, vmax = %i, mbw = %i, mbh = %i, nhmb = %i, nvmb = %i\n",
+   frame->hmax, frame->vmax, mbw, mbh, frame->nhmb, frame->nvmb));
 }
 
+#if LOGGING_ENABLED
 static void printBits(int value, int bits) {
   int i;
   for (i = 1; i <= bits; i++) {
@@ -538,6 +550,7 @@ static void printBits(int value, int bits) {
     printf(" %s", i%4 ? "" : " ");
   }
 }
+#endif
 
 static void jgpu_decode_dht(jpeg_gpu_ctx *ctx) {
   unsigned short len;
@@ -577,9 +590,11 @@ static void jgpu_decode_dht(jpeg_gpu_ctx *ctx) {
       for (j = 0; j < huff->bits[i]; j++) {
         huff->codeword[k] = codeword;
         JGPU_DECODE_BYTE(ctx, huff->symbol[k]);
+#if LOGGING_ENABLED
         printf("bits = %2i, codeword = ", i + 1);
         printBits(codeword, i + 1);
         printf(", symbol = %02X\n", huff->symbol[k]);
+#endif
         k++;
         codeword++;
       }
@@ -589,21 +604,27 @@ static void jgpu_decode_dht(jpeg_gpu_ctx *ctx) {
     }
     huff->symbs = k;
     k = 0;
-    printf("building index table");
+    JGPU_LOG(("building index table"));
     for (i = 0; i < 16; i++) {
       huff->maxcode[i] = -1;
       if (huff->bits[i]) {
+#if LOGGING_ENABLED
         printf("\nbits = %i, offset = %i\n", i + 1, k);
-	printf("first codeword = ");
+        printf("first codeword = ");
 	printBits(huff->codeword[k], i + 1);
+#endif
         huff->index[i] = k - huff->codeword[k];
 	k += huff->bits[i];
+#if LOGGING_ENABLED
 	printf("\n last codeword = ");
 	printBits(huff->codeword[k - 1], i + 1);
+#endif
 	huff->maxcode[i] = huff->codeword[k - 1];
       }
+#if LOGGING_ENABLED
       printf("\n%i: index = %i, maxcode = ", i, huff->index[i]);
       printBits(huff->maxcode[i], i + 1);
+#endif
     }
     /* Generate a lookup table to speed up decoding */
     for (i = 0; i < 1 << LOOKUP_BITS; i++) {
@@ -620,6 +641,7 @@ static void jgpu_decode_dht(jpeg_gpu_ctx *ctx) {
 	k++;
       }
     }
+#if LOGGING_ENABLED
     for (i = 0; i < 1 << LOOKUP_BITS; i++) {
       int value;
       int bits;
@@ -631,14 +653,15 @@ static void jgpu_decode_dht(jpeg_gpu_ctx *ctx) {
       printBits(i >> (LOOKUP_BITS - bits), bits);
       printf(", symbol = %i\n", code);
     }
+#endif
     /* If this is a DC table, validate that the symbols are between 0 and 15 */
     if (!tc) {
       for (i = 0; i < huff->symbs; i++) {
         JGPU_ERROR(ctx, huff->symbol[i] > 15, "Error invalid DC symbol.");
       }
     }
-    printf("Reading %s Huffman Table %i symbols %i\n", tc ? "AC" : "DC", th,
-     huff->symbs);
+    JGPU_LOG(("Reading %s Huffman Table %i symbols %i\n", tc ? "AC" : "DC", th,
+     huff->symbs));
   }
   JGPU_ERROR(ctx, len != 0, "Error decoding DHT, unprocessed bytes.");
 }
@@ -648,7 +671,7 @@ static void jgpu_decode_rsi(jpeg_gpu_ctx *ctx) {
   JGPU_DECODE_SHORT(ctx, len);
   len -= 2;
   JGPU_DECODE_SHORT(ctx, ctx->restart_interval);
-  printf("Restart Interval %i\n", ctx->restart_interval);
+  JGPU_LOG(("Restart Interval %i\n", ctx->restart_interval));
   len -= 2;
   JGPU_ERROR(ctx, len != 0, "Error decoding DRI, unprocessed bytes.");
 }
@@ -861,27 +884,29 @@ static void jgpu_decode_scan(jpeg_gpu_ctx *ctx) {
             unsigned char *data;
             memset(block, 0, sizeof(block));
             JGPU_DECODE_VLC(ctx, &ctx->dc_huff[comp->td], symbol, value);
-            printf("dc = %i\n", value);
+            JGPU_LOG(("dc = %i\n", value));
             comp->dc_pred += value;
-	    printf("dc_pred = %i\n", comp->dc_pred);
+            JGPU_LOG(("dc_pred = %i\n", comp->dc_pred));
             j = 0;
             block[0] = comp->dc_pred*ctx->quant[pi->tq].tbl[0];
             do {
               JGPU_DECODE_VLC(ctx, &ctx->ac_huff[comp->ta], symbol, value);
               if (!symbol) {
-	        printf("****************** EOB at j = %i\n\n", j);
+                JGPU_LOG(("****************** EOB at j = %i\n\n", j));
                 break;
               }
               j += (symbol >> 4) + 1;
-	      printf("j = %i, offset = %i, value = %i, dequant = %i\n", j,
-	       (symbol >> 4) + 1, value, value*ctx->quant[pi->tq].tbl[j]);
+              JGPU_LOG(("j = %i, offset = %i, value = %i, dequant = %i\n", j,
+               (symbol >> 4) + 1, value, value*ctx->quant[pi->tq].tbl[j]));
 	      JGPU_ERROR(ctx, j > 63, "Error indexing outside block.");
               block[DE_ZIG_ZAG[j]] = value*ctx->quant[pi->tq].tbl[j];
             }
             while (j < 63);
+#if LOGGING_ENABLED
 	    for (j = 1; j <= 64; j++) {
 	      printf("%5i%s", block[j - 1], j & 0x7 ? ", " : "\n");
 	    }
+#endif
             coeffs = ip->coeffs +
              ((mby*pi->vsamp + sby)*ip->width << 3) +
              ((mbx*pi->hsamp + sbx) << 3);
@@ -903,8 +928,8 @@ static void jgpu_decode_scan(jpeg_gpu_ctx *ctx) {
         }
       }
       mcu_counter--;
-      printf("mbx = %i, mby = %i, rst_counter = %i, mcu_counter = %i\n",
-       mbx, mby, rst_counter, mcu_counter);
+      JGPU_LOG(("mbx = %i, mby = %i, rst_counter = %i, mcu_counter = %i\n",
+       mbx, mby, rst_counter, mcu_counter));
       if (ctx->restart_interval && mcu_counter == 0) {
         JGPU_ERROR(ctx, !ctx->marker, "Error, expected to find marker.");
         switch (ctx->marker) {
@@ -944,12 +969,12 @@ static void jgpu_decode_soi(jpeg_gpu_ctx *ctx) {
   JGPU_ERROR(ctx, ctx->size < 2, "Error, not a JPEG (too small).");
   JGPU_ERROR(ctx, ctx->pos[0] != 0xFF || ctx->pos[1] != 0xD8,
    "Error, not a JPEG (invalid SOI marker)");
-  fprintf(stderr, "Start of Image\n");
+  JGPU_LOG(("Start of Image\n"));
   JGPU_SKIP_BYTES(ctx, 2);
 }
 
 static void jgpu_decode_eoi(jpeg_gpu_ctx *ctx) {
-  fprintf(stderr, "End of Image reached\n");
+  JGPU_LOG((stderr, "End of Image reached\n"));
   ctx->end_of_image = 1;
   JGPU_ERROR(ctx, ctx->size != 0, "Error decoding EOI, unprocessed bytes.");
 }
@@ -964,7 +989,7 @@ static void jgpu_decode(jpeg_gpu_ctx *ctx) {
     if (marker == 0) {
       JGPU_ERROR(ctx, ctx->size < 2, "Error, underflow reading marker.");
       JGPU_ERROR(ctx, ctx->pos[0] != 0xFF, "Error, invalid JPEG syntax");
-      printf("Marker = %2X %2X\n", ctx->pos[0], ctx->pos[1]);
+      JGPU_LOG(("Marker = %2X %2X\n", ctx->pos[0], ctx->pos[1]));
       JGPU_SKIP_BYTES(ctx, 1);
       JGPU_DECODE_BYTE(ctx, marker);
     }
@@ -1017,7 +1042,7 @@ int main(int argc, const char *argv[]) {
     return EXIT_FAILURE;
   }
   if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-    printf("Unable to initialize SDL: %s\n", SDL_GetError());
+    fprintf(stderr, "Unable to initialize SDL: %s\n", SDL_GetError());
     return EXIT_FAILURE;
   }
   jgpu_decode(&ctx);
@@ -1030,7 +1055,7 @@ int main(int argc, const char *argv[]) {
     int done;
     done = 0;
     img = &ctx.img;
-    fprintf(stderr, "width = %i, height = %i\n", img->width, img->height);
+    JGPU_LOG((stderr, "width = %i, height = %i\n", img->width, img->height));
     screen = SDL_SetVideoMode(img->width, img->height, 24, SDL_HWSURFACE);
     if (!screen) {
       done = 1;
