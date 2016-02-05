@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <SDL.h>
+#define GL_GLEXT_PROTOTYPES
+#include <GLFW/glfw3.h>
 
 #define NPLANES_MAX (3)
 
@@ -30,6 +30,8 @@
     } \
   } \
   while (0)
+
+#define NAME "jpeg_gpu"
 
 int od_ilog(uint32_t _v) {
   /*On a Pentium M, this branchless version tested as the fastest on
@@ -1033,6 +1035,80 @@ static void jgpu_decode(jpeg_gpu_ctx *ctx) {
   }
 }
 
+static const char MEM_FRAG[]="\
+#version 130\n\
+uniform sampler2D myTexture;\n\
+void main() {\n\
+  int x=int(gl_FragCoord.x);\n\
+  int y=int(gl_FragCoord.y);\n\
+  gl_FragColor=texelFetch(myTexture,ivec2(x,y),0);\n\
+}";
+
+static void error_callback(int error, const char* description) {
+  fprintf(stderr, "glfw error %i: %s\n", error, description);
+}
+
+static void key_callback(GLFWwindow* window, int key, int scancode, int action,
+ int mods) {
+  if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+    glfwSetWindowShouldClose(window, GL_TRUE);
+  }
+}
+
+/* Compile the shader fragment. */
+static GLint load_shader(GLuint *_shad,const char *_src) {
+  int    len;
+  GLuint shad;
+  GLint  status;
+  len=strlen(_src);
+  shad=glCreateShader(GL_FRAGMENT_SHADER);
+  glShaderSource(shad,1,&_src,&len);
+  glCompileShader(shad);
+  glGetShaderiv(shad,GL_COMPILE_STATUS,&status);
+  if (status!=GL_TRUE) {
+    char info[8192];
+    glGetShaderInfoLog(shad,8192,NULL,info);
+    printf("Failed to compile fragment shader.\n%s\n",info);
+    return GL_FALSE;
+  }
+  *_shad=shad;
+  return GL_TRUE;
+}
+
+static GLint setup_shader(GLuint *_prog,const char *_src) {
+  GLuint shad;
+  GLuint prog;
+  GLint  status;
+  if (!load_shader(&shad,_src)) {
+    return GL_FALSE;
+  }
+  prog=glCreateProgram();
+  glAttachShader(prog,shad);
+  glLinkProgram(prog);
+  glGetProgramiv(prog,GL_LINK_STATUS,&status);
+  if (status!=GL_TRUE) {
+    char info[8192];
+    glGetProgramInfoLog(prog,8192,NULL,info);
+    printf("Failed to link program.\n%s\n",info);
+    return GL_FALSE;
+  }
+  glUseProgram(prog);
+  *_prog=prog;
+  return GL_TRUE;
+}
+
+static GLint bind_texture(GLuint prog,const char *name, int tex) {
+  GLint loc;
+  loc = glGetUniformLocation(prog, name);
+  if (loc < 0) {
+    printf("Error finding texture '%s' in program %i\n", name, prog);
+    return GL_FALSE;
+  }
+  glUniform1i(loc, tex);
+  return GL_TRUE;
+}
+
+
 int main(int argc, const char *argv[]) {
   jpeg_gpu_ctx ctx;
   if (argc < 2) {
@@ -1041,8 +1117,8 @@ int main(int argc, const char *argv[]) {
   if (jgpu_init(&ctx, argv[1])) {
     return EXIT_FAILURE;
   }
-  if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-    fprintf(stderr, "Unable to initialize SDL: %s\n", SDL_GetError());
+  glfwSetErrorCallback(error_callback);
+  if (!glfwInit()) {
     return EXIT_FAILURE;
   }
   jgpu_decode(&ctx);
@@ -1050,29 +1126,31 @@ int main(int argc, const char *argv[]) {
     fprintf(stderr, "%s\n", ctx.error);
   }
   else {
-    SDL_Surface *screen;
+    GLFWwindow *window;
     image *img;
-    int done;
-    done = 0;
+    unsigned char *texture;
+    GLuint tex;
+    GLuint prog;
+
     img = &ctx.img;
     JGPU_LOG((stderr, "width = %i, height = %i\n", img->width, img->height));
-    screen = SDL_SetVideoMode(img->width, img->height, 24, SDL_HWSURFACE);
-    if (!screen) {
-      done = 1;
-    }
-    while (!done) {
+
+    /* Allocate enough memory for ARGB buffer */
+    /* TODO handle out of memory error better */
+    texture = (unsigned char *)malloc(img->width*img->height*4);
+    if (texture) {
       int i;
       int j;
-      SDL_Event event;
-      /* paint the screen */
+      /* paint the texture */
       for (j = 0; j < img->height; j++) {
         unsigned char *pixels;
-        pixels = screen->pixels;
-        pixels += j*screen->pitch;
+        pixels = texture;
+        pixels += j*img->width*4;
         for (i = 0; i < img->width; i++) {
           if (img->nplanes == 1) {
             pixels[0] = pixels[1] = pixels[2] =
              img->plane[0].data[j*img->plane[0].ystride + i];
+            pixels[3] = 0xff;
           }
           else {
             unsigned char r;
@@ -1091,29 +1169,78 @@ int main(int argc, const char *argv[]) {
             r = OD_CLAMP255(((int)(y + 1.402*cr)));
             g = OD_CLAMP255(((int)(y - 0.34414*cb - 0.71414*cr)));
             b = OD_CLAMP255(((int)(y + 1.1772*cb)));
-            pixels[0] = b;
+            pixels[0] = r;
             pixels[1] = g;
-            pixels[2] = r;
+            pixels[2] = b;
+            pixels[3] = 0xff;
           }
-          pixels += 3;
-        }
-      }
-      SDL_Flip(screen);
-      while (SDL_PollEvent(&event)) {
-        switch (event.type) {
-            case SDL_QUIT : {
-            done = 1;
-            break;
-          }
-          case SDL_KEYDOWN : {
-            done = 1;
-            break;
-          }
+          pixels += 4;
         }
       }
     }
+
+    /* TODO handle this error better */
+    glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+    window = glfwCreateWindow(img->width, img->height, NAME, NULL, NULL);
+    if (!window) {
+      glfwTerminate();
+    }
+
+    glfwMakeContextCurrent(window);
+    glfwSetKeyCallback(window, key_callback);
+    glfwSwapInterval(0);
+
+    glViewport(0, 0, img->width, img->height);
+
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(0, img->width, img->height, 0, 0, 1);
+
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_LIGHTING);
+    glEnable(GL_TEXTURE_2D);
+
+    glActiveTexture(GL_TEXTURE0);
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img->width, img->height, 0, GL_RGBA,
+     GL_UNSIGNED_BYTE, texture);
+
+    if (!setup_shader(&prog, MEM_FRAG)) {
+      return EXIT_FAILURE;
+    }
+    if (!bind_texture(prog, "myTexture", 0)) {
+      return EXIT_FAILURE;
+    }
+
+    glUseProgram(prog);
+    while (!glfwWindowShouldClose(window)) {
+      glBegin(GL_QUADS);
+      glTexCoord2i(0, 0);
+      glVertex2i(0, 0);
+      glTexCoord2i(img->width, 0);
+      glVertex2i(img->width, 0);
+      glTexCoord2i(img->width, img->height);
+      glVertex2i(img->width, img->height);
+      glTexCoord2i(0, img->height);
+      glVertex2i(0, img->height);
+      glEnd();
+
+      glfwSwapBuffers(window);
+
+      glfwPollEvents();
+    }
+    if (texture) {
+      glDeleteTextures(1, &tex);
+      free(texture);
+    }
+    glfwDestroyWindow(window);
   }
   jgpu_clear(&ctx);
-  SDL_Quit();
+  glfwTerminate();
   return EXIT_SUCCESS;
 }

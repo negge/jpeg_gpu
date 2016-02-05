@@ -3,13 +3,13 @@ SRC_DIR := src
 
 OBJS := 
 BINS := bin/jpeg_gpu
-LIBS := `pkg-config --libs sdl`
+LIBS := `pkg-config --libs glfw3` `pkg-config --libs gl`
 
 
 CFLAGS := -std=c89 -pedantic
 CFLAGS += -O0 -Wall -Wextra -Wno-parentheses -pedantic
 CFLAGS += -g
-CFLAGS += `pkg-config --cflags sdl`
+CFLAGS += `pkg-config --cflags glfw3`
 
 guard=@mkdir -p $(@D)
 
