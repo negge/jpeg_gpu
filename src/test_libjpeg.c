@@ -253,8 +253,8 @@ int main(int argc, char *argv[]) {
       plane->xdec = OD_ILOG(hmax) - OD_ILOG(comp->h_samp_factor);
       plane->ydec = OD_ILOG(vmax) - OD_ILOG(comp->v_samp_factor);
       plane->data = malloc(plane->ystride*plane->height);
-      printf("hsamp = %i, vsamp = %i, width = %i, height = %i\n",
-       comp->h_samp_factor, comp->v_samp_factor, plane->width, plane->height);
+      printf("Plane %i: width = %4i, height = %4i, xdec = %i, ydec = %i\n",
+       i, plane->width, plane->height, plane->xdec, plane->ydec);
     }
 
     jpeg_destroy_decompress(&cinfo);
