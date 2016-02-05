@@ -1111,7 +1111,8 @@ static GLint bind_texture(GLuint prog,const char *name, int tex) {
 
 int main(int argc, const char *argv[]) {
   jpeg_gpu_ctx ctx;
-  if (argc < 2) {
+  if (argc != 2) {
+    fprintf(stderr, "usage: %s <jpeg_file>\n", argv[0]);
     return EXIT_FAILURE;
   }
   if (jgpu_init(&ctx, argv[1])) {
