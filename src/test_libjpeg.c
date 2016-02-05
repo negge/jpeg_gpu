@@ -447,6 +447,10 @@ int main(int argc, char *argv[]) {
         }
         first = 0;
       }
+
+
+/* Set to 0 to turn off GPU code (and measure just the time spent in libjpeg. */
+#if 1
       for (i = 0; i < img.nplanes; i++) {
         image_plane *plane;
         plane = &img.plane[i];
@@ -461,6 +465,7 @@ int main(int argc, char *argv[]) {
       glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
       glfwSwapBuffers(window);
+#endif
 
       frames++;
       time = glfwGetTime();
