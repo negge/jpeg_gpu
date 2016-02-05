@@ -2,8 +2,8 @@ BIN_DIR := bin
 SRC_DIR := src
 
 OBJS := 
-BINS := bin/jpeg_gpu
-LIBS := `pkg-config --libs glfw3` `pkg-config --libs gl`
+BINS := bin/jpeg_gpu bin/test_libjpeg
+LIBS := `pkg-config --libs glfw3` `pkg-config --libs gl` -ljpeg
 
 
 CFLAGS := -std=c89 -pedantic
