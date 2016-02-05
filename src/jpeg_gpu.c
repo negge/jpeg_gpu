@@ -823,6 +823,8 @@ static void jgpu_decode_sos(jpeg_gpu_ctx *ctx) {
   } \
   while (0)
 
+#define OD_COEFF_SHIFT (4)
+
 static void od_bin_idct8(int *x, int xstride, const int y[8]) {
   int t0;
   int t1;
@@ -832,23 +834,23 @@ static void od_bin_idct8(int *x, int xstride, const int y[8]) {
   int t5;
   int t6;
   int t7;
-  t0 = y[0];
-  t4 = y[1];
-  t2 = y[2];
-  t6 = y[3];
-  t1 = y[4];
-  t5 = y[5];
-  t3 = y[6];
-  t7 = y[7];
+  t0 = y[0] << OD_COEFF_SHIFT;
+  t4 = y[1] << OD_COEFF_SHIFT;
+  t2 = y[2] << OD_COEFF_SHIFT;
+  t6 = y[3] << OD_COEFF_SHIFT;
+  t1 = y[4] << OD_COEFF_SHIFT;
+  t5 = y[5] << OD_COEFF_SHIFT;
+  t3 = y[6] << OD_COEFF_SHIFT;
+  t7 = y[7] << OD_COEFF_SHIFT;
   OD_IDCT_8(t0, t4, t2, t6, t1, t5, t3, t7);
-  x[0*xstride] = t0;
-  x[1*xstride] = t1;
-  x[2*xstride] = t2;
-  x[3*xstride] = t3;
-  x[4*xstride] = t4;
-  x[5*xstride] = t5;
-  x[6*xstride] = t6;
-  x[7*xstride] = t7;
+  x[0*xstride] = t0 >> OD_COEFF_SHIFT;
+  x[1*xstride] = t1 >> OD_COEFF_SHIFT;
+  x[2*xstride] = t2 >> OD_COEFF_SHIFT;
+  x[3*xstride] = t3 >> OD_COEFF_SHIFT;
+  x[4*xstride] = t4 >> OD_COEFF_SHIFT;
+  x[5*xstride] = t5 >> OD_COEFF_SHIFT;
+  x[6*xstride] = t6 >> OD_COEFF_SHIFT;
+  x[7*xstride] = t7 >> OD_COEFF_SHIFT;
 }
 
 static void od_bin_idct8x8(int *x, int xstride, const int *y, int ystride) {
