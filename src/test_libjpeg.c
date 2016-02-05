@@ -10,7 +10,7 @@
 #define NAME "test_libjpeg"
 
 static const char YUV_VERT[]="\
-#version 130\n\
+#version 140\n\
 in vec3 in_pos;\n\
 in ivec2 in_tex;\n\
 out vec2 out_tex;\n\
@@ -20,7 +20,7 @@ void main() {\n\
 }";
 
 static const char YUV_FRAG[]="\
-#version 130\n\
+#version 140\n\
 in vec2 out_tex;\n\
 out vec4 color;\n\
 uniform sampler2D y_tex;\n\
