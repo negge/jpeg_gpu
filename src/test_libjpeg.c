@@ -465,8 +465,10 @@ int main(int argc, char *argv[]) {
       frames++;
       time = glfwGetTime();
       if (time - last >= 1.0) {
+        double avg;
         char title[255];
-        sprintf(title, "%s - [FPS %4i]", NAME, frames);
+        avg = 1000*(time - last)/frames;
+        sprintf(title, "%s - %0.3f ms", NAME, avg);
         glfwSetWindowTitle(window, title);
         frames = 0;
         last = time;
