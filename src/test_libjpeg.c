@@ -5,8 +5,7 @@
 #include <getopt.h>
 #define GL_GLEXT_PROTOTYPES
 #include <GLFW/glfw3.h>
-
-#define NPLANES_MAX (3)
+#include "jpeg_wrap.h"
 
 #define NAME "test_libjpeg"
 
@@ -38,28 +37,6 @@ void main() {\n\
   float b=y+1.772*(u-128);\n\
   color=vec4(r/255.0,g/255.0,b/255.0,1.0);\n\
 }";
-
-typedef struct image_plane image_plane;
-
-struct image_plane {
-  int bitdepth;
-  unsigned char xdec;
-  unsigned char ydec;
-  int xstride;
-  int ystride;
-  unsigned short width;
-  unsigned short height;
-  unsigned char *data;
-};
-
-typedef struct image image;
-
-struct image {
-  unsigned short width;
-  unsigned short height;
-  int nplanes;
-  image_plane plane[NPLANES_MAX];
-};
 
 typedef struct vertex vertex;
 
@@ -556,11 +533,9 @@ int main(int argc, char *argv[]) {
     glfwDestroyWindow(window);
 
     glDeleteTextures(img.nplanes, tex);
-    for (i = 0; i < img.nplanes; i++) {
-      free(img.plane[i].data);
-    }
   }
 
   free(jpeg_buf);
+  image_clear(&img);
   return EXIT_SUCCESS;
 }
