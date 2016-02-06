@@ -278,6 +278,7 @@ int main(int argc, char *argv[]) {
     int frames;
     int i;
     int first;
+    int pixels;
 
     glfwSetErrorCallback(error_callback);
     if (!glfwInit()) {
@@ -387,6 +388,12 @@ int main(int argc, char *argv[]) {
     first = 0;
     last = glfwGetTime();
     frames = 0;
+    pixels = 0;
+    for (i = 0; i < img.nplanes; i++) {
+      image_plane *plane;
+      plane = &img.plane[i];
+      pixels += (plane->width >> plane->xdec)*(plane->height >> plane->ydec);
+    }
     while (!glfwWindowShouldClose(window)) {
       struct jpeg_decompress_struct cinfo;
       struct jpeg_error_mgr jerr;
@@ -476,7 +483,8 @@ int main(int argc, char *argv[]) {
         double avg;
         char title[255];
         avg = 1000*(time - last)/frames;
-        sprintf(title, "%s - %0.3f ms [FPS %4i]", NAME, avg, frames);
+        sprintf(title, "%s - %4i FPS (%0.3f ms) %0.3f MBps", NAME, frames, avg,
+         frames*(pixels/1000000.0));
         glfwSetWindowTitle(window, title);
         frames = 0;
         last = time;
