@@ -1,8 +1,9 @@
 BIN_DIR := bin
 SRC_DIR := src
 
-OBJS := 
 BINS := bin/jpeg_gpu bin/test_libjpeg
+OBJS := $(patsubst $(SRC_DIR)/%.c,$(BIN_DIR)/%.o,$(filter-out \
+ $(patsubst $(BIN_DIR)/%,$(SRC_DIR)/%.c,$(BINS)),$(wildcard $(SRC_DIR)/*.c)))
 LIBS := `pkg-config --libs glfw3` `pkg-config --libs gl` -ljpeg
 
 
