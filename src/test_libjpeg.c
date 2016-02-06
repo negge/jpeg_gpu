@@ -2,13 +2,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <jpeglib.h>
+#include <getopt.h>
 #define GL_GLEXT_PROTOTYPES
 #include <GLFW/glfw3.h>
 
 #define NPLANES_MAX (3)
-
-#define DISABLE_CPU (1)
-#define DISABLE_GPU (0)
 
 #define NAME "test_libjpeg"
 
@@ -170,27 +168,66 @@ static GLint bind_texture(GLuint prog,const char *name, int tex) {
   return GL_TRUE;
 }
 
+static const char *OPTSTRING = "h";
+
+static const struct option OPTIONS[] = {
+  { "help", no_argument, NULL, 'h' },
+  { "no-cpu", no_argument, NULL, 0 },
+  { "no-gpu", no_argument, NULL, 0 },
+  { NULL, 0, NULL, 0 }
+};
+
+static void usage() {
+  fprintf(stderr,
+   "Usage: %s [options] jpeg_file\n\n"
+   "Options:\n\n"
+   "  -h --help                      Display this help and exit.\n"
+   "     --no-cpu                    Disable CPU decoding in main loop.\n"
+   "     --no-gpu                    Disable GPU decoding in main loop.\n"
+   " %s accepts only 8-bit non-hierarchical JPEG files.\n\n", NAME, NAME);
+}
+
 int main(int argc, char *argv[]) {
   unsigned char *jpeg_buf;
   int jpeg_sz;
   image img;
-
-  if (argc != 2) {
-    fprintf(stderr, "usage: %s <jpeg_file>\n", argv[0]);
-    return EXIT_FAILURE;
+  int no_cpu;
+  int no_gpu;
+  int c;
+  int loi;
+  no_cpu = 0;
+  no_gpu = 0;
+  while ((c = getopt_long(argc, argv, OPTSTRING, OPTIONS, &loi)) != EOF) {
+    switch (c) {
+      case 0 : {
+        if (strcmp(OPTIONS[loi].name, "no-cpu") == 0) {
+          no_cpu = 1;
+        }
+        else if (strcmp(OPTIONS[loi].name, "no-gpu") == 0) {
+          no_gpu = 1;
+        }
+        break;
+      }
+      case 'h' :
+      default : {
+        usage();
+        return EXIT_FAILURE;
+      }
+    }
   }
-
-  /* Load the JPEG into memeory */
-  {
+  /*Assume anything following the options is a file name.*/
+  jpeg_buf = NULL;
+  for (; optind < argc; optind++) {
     FILE *fp;
     int size;
-    fp = fopen(argv[1], "rb");
+    fp = fopen(argv[optind], "rb");
     if (fp == NULL) {
-      fprintf(stderr, "Error, could not open jpeg file %s\n", argv[1]);
+      fprintf(stderr, "Error, could not open jpeg file %s\n", argv[optind]);
       return EXIT_FAILURE;
     }
     fseek(fp, 0, SEEK_END);
     jpeg_sz = ftell(fp);
+    free(jpeg_buf);
     jpeg_buf = malloc(jpeg_sz);
     if (jpeg_buf == NULL) {
       fprintf(stderr, "Error, could not allocate %i bytes\n", jpeg_sz);
@@ -398,54 +435,55 @@ int main(int argc, char *argv[]) {
       pixels += (plane->width >> plane->xdec)*(plane->height >> plane->ydec);
     }
     while (!glfwWindowShouldClose(window)) {
-      struct jpeg_decompress_struct cinfo;
-      struct jpeg_error_mgr jerr;
       int i;
       double time;
 
-      /* This code assumes 4:2:0 */
-      JSAMPROW yrow_pointer[16];
-      JSAMPROW cbrow_pointer[16];
-      JSAMPROW crrow_pointer[16];
-      JSAMPROW *plane_pointer[3];
+      if (!no_cpu) {
+        struct jpeg_decompress_struct cinfo;
+        struct jpeg_error_mgr jerr;
 
-#if !DISABLE_CPU
-      cinfo.err=jpeg_std_error(&jerr);
-      jpeg_create_decompress(&cinfo);
+        /* This code assumes 4:2:0 */
+        JSAMPROW yrow_pointer[16];
+        JSAMPROW cbrow_pointer[16];
+        JSAMPROW crrow_pointer[16];
+        JSAMPROW *plane_pointer[3];
 
-      plane_pointer[0] = yrow_pointer;
-      plane_pointer[1] = cbrow_pointer;
-      plane_pointer[2] = crrow_pointer;
+        cinfo.err=jpeg_std_error(&jerr);
+        jpeg_create_decompress(&cinfo);
 
-      jpeg_mem_src(&cinfo, jpeg_buf, jpeg_sz);
-      jpeg_read_header(&cinfo, TRUE);
+        plane_pointer[0] = yrow_pointer;
+        plane_pointer[1] = cbrow_pointer;
+        plane_pointer[2] = crrow_pointer;
 
-      cinfo.raw_data_out = TRUE;
-      cinfo.do_fancy_upsampling = FALSE;
-      cinfo.dct_method = JDCT_IFAST;
+        jpeg_mem_src(&cinfo, jpeg_buf, jpeg_sz);
+        jpeg_read_header(&cinfo, TRUE);
 
-      jpeg_start_decompress(&cinfo);
+        cinfo.raw_data_out = TRUE;
+        cinfo.do_fancy_upsampling = FALSE;
+        cinfo.dct_method = JDCT_IFAST;
 
-      while (cinfo.output_scanline<cinfo.output_height) {
-        int j;
+        jpeg_start_decompress(&cinfo);
 
-        for (i = 0; i < img.nplanes; i++) {
-          image_plane *plane;
-          int y_off;
-          plane = &img.plane[i];
-          y_off = cinfo.output_scanline >> plane->ydec;
-          for (j = 0; j < 16 >> plane->ydec; j++) {
-            plane_pointer[i][j]=
-             &plane->data[(y_off + j)*plane->width];
+        while (cinfo.output_scanline<cinfo.output_height) {
+          int j;
+
+          for (i = 0; i < img.nplanes; i++) {
+            image_plane *plane;
+            int y_off;
+            plane = &img.plane[i];
+            y_off = cinfo.output_scanline >> plane->ydec;
+            for (j = 0; j < 16 >> plane->ydec; j++) {
+              plane_pointer[i][j]=
+               &plane->data[(y_off + j)*plane->width];
+            }
           }
+
+          jpeg_read_raw_data(&cinfo,plane_pointer, 16);
         }
 
-        jpeg_read_raw_data(&cinfo,plane_pointer, 16);
+        jpeg_finish_decompress(&cinfo);
+        jpeg_destroy_decompress(&cinfo);
       }
-
-      jpeg_finish_decompress(&cinfo);
-      jpeg_destroy_decompress(&cinfo);
-#endif
 
       if (first) {
         for (i = 0; i < img.nplanes; i++) {
@@ -464,22 +502,22 @@ int main(int argc, char *argv[]) {
         first = 0;
       }
 
-#if !DISABLE_GPU
-      for (i = 0; i < img.nplanes; i++) {
-        image_plane *plane;
-        plane = &img.plane[i];
-        glActiveTexture(GL_TEXTURE0+i);
-        glBindTexture(GL_TEXTURE_2D, tex[i]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, plane->width, plane->height, 0,
-         GL_RED_INTEGER, GL_UNSIGNED_BYTE, plane->data);
+      if (!no_gpu) {
+        for (i = 0; i < img.nplanes; i++) {
+          image_plane *plane;
+          plane = &img.plane[i];
+          glActiveTexture(GL_TEXTURE0+i);
+          glBindTexture(GL_TEXTURE_2D, tex[i]);
+          glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, plane->width, plane->height,
+           0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, plane->data);
+        }
+
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+        glfwSwapBuffers(window);
       }
-
-      glClear(GL_COLOR_BUFFER_BIT);
-
-      glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-      glfwSwapBuffers(window);
-#endif
 
       frames++;
       time = glfwGetTime();
