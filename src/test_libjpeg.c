@@ -200,57 +200,58 @@ int main(int argc, char *argv[]) {
   image img;
   int no_cpu;
   int no_gpu;
-  int c;
-  int loi;
   no_cpu = 0;
   no_gpu = 0;
-  while ((c = getopt_long(argc, argv, OPTSTRING, OPTIONS, &loi)) != EOF) {
-    switch (c) {
-      case 0 : {
-        if (strcmp(OPTIONS[loi].name, "no-cpu") == 0) {
-          no_cpu = 1;
+  {
+    int c;
+    int loi;
+    while ((c = getopt_long(argc, argv, OPTSTRING, OPTIONS, &loi)) != EOF) {
+      switch (c) {
+        case 0 : {
+          if (strcmp(OPTIONS[loi].name, "no-cpu") == 0) {
+            no_cpu = 1;
+          }
+          else if (strcmp(OPTIONS[loi].name, "no-gpu") == 0) {
+            no_gpu = 1;
+          }
+          break;
         }
-        else if (strcmp(OPTIONS[loi].name, "no-gpu") == 0) {
-          no_gpu = 1;
+        case 'h' :
+        default : {
+          usage();
+          return EXIT_FAILURE;
         }
-        break;
       }
-      case 'h' :
-      default : {
-        usage();
+    }
+    /*Assume anything following the options is a file name.*/
+    jpeg_buf = NULL;
+    jpeg_sz = 0;
+    for (; optind < argc; optind++) {
+      FILE *fp;
+      int size;
+      fp = fopen(argv[optind], "rb");
+      if (fp == NULL) {
+        fprintf(stderr, "Error, could not open jpeg file %s\n", argv[optind]);
         return EXIT_FAILURE;
       }
+      fseek(fp, 0, SEEK_END);
+      jpeg_sz = ftell(fp);
+      free(jpeg_buf);
+      jpeg_buf = malloc(jpeg_sz);
+      if (jpeg_buf == NULL) {
+        fprintf(stderr, "Error, could not allocate %i bytes\n", jpeg_sz);
+        return EXIT_FAILURE;
+      }
+      fseek(fp, 0, SEEK_SET);
+      size = fread(jpeg_buf, 1, jpeg_sz, fp);
+      if (size != jpeg_sz) {
+        fprintf(stderr, "Error reading jpeg file, got %i of %i bytes\n", size,
+         jpeg_sz);
+        return EXIT_FAILURE;
+      }
+      fclose(fp);
     }
   }
-  /*Assume anything following the options is a file name.*/
-  jpeg_buf = NULL;
-  jpeg_sz = 0;
-  for (; optind < argc; optind++) {
-    FILE *fp;
-    int size;
-    fp = fopen(argv[optind], "rb");
-    if (fp == NULL) {
-      fprintf(stderr, "Error, could not open jpeg file %s\n", argv[optind]);
-      return EXIT_FAILURE;
-    }
-    fseek(fp, 0, SEEK_END);
-    jpeg_sz = ftell(fp);
-    free(jpeg_buf);
-    jpeg_buf = malloc(jpeg_sz);
-    if (jpeg_buf == NULL) {
-      fprintf(stderr, "Error, could not allocate %i bytes\n", jpeg_sz);
-      return EXIT_FAILURE;
-    }
-    fseek(fp, 0, SEEK_SET);
-    size = fread(jpeg_buf, 1, jpeg_sz, fp);
-    if (size != jpeg_sz) {
-      fprintf(stderr, "Error reading jpeg file, got %i of %i bytes\n", size,
-       jpeg_sz);
-      return EXIT_FAILURE;
-    }
-    fclose(fp);
-  }
-
   if (jpeg_sz == 0) {
     usage();
     return EXIT_FAILURE;
