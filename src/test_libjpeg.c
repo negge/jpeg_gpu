@@ -217,6 +217,7 @@ int main(int argc, char *argv[]) {
   }
   /*Assume anything following the options is a file name.*/
   jpeg_buf = NULL;
+  jpeg_sz = 0;
   for (; optind < argc; optind++) {
     FILE *fp;
     int size;
@@ -241,6 +242,11 @@ int main(int argc, char *argv[]) {
       return EXIT_FAILURE;
     }
     fclose(fp);
+  }
+
+  if (jpeg_sz == 0) {
+    usage();
+    return EXIT_FAILURE;
   }
 
   /* Decompress the image header and allocate texture memory.
