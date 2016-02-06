@@ -110,16 +110,19 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action,
 static GLint load_shader(GLuint *_shad,GLenum _shader,const char *_src) {
   int    len;
   GLuint shad;
+  char info[8192];
   GLint  status;
   len = strlen(_src);
   shad = glCreateShader(_shader);
   glShaderSource(shad, 1, &_src, &len);
   glCompileShader(shad);
+  glGetShaderInfoLog(shad, 8192, &len, info);
+  if (len > 0) {
+    printf("%s", info);
+  }
   glGetShaderiv(shad, GL_COMPILE_STATUS, &status);
   if (status != GL_TRUE) {
-    char info[8192];
-    glGetShaderInfoLog(shad, 8192, NULL, info);
-    printf("Failed to compile fragment shader.\n%s\n", info);
+    printf("Failed to compile fragment shader.\n");
     return GL_FALSE;
   }
   *_shad = shad;
@@ -128,6 +131,8 @@ static GLint load_shader(GLuint *_shad,GLenum _shader,const char *_src) {
 
 static GLint setup_shader(GLuint *_prog,const char *_vert,const char *_frag) {
   GLuint prog;
+  int len;
+  char info[8192];
   GLint  status;
   prog = glCreateProgram();
   if (_vert!=NULL) {
@@ -146,10 +151,12 @@ static GLint setup_shader(GLuint *_prog,const char *_vert,const char *_frag) {
   }
   glLinkProgram(prog);
   glGetProgramiv(prog, GL_LINK_STATUS, &status);
+  glGetProgramInfoLog(prog, 8192, &len, info);
+  if (len > 0) {
+    printf("%s", info);
+  }
   if (status != GL_TRUE) {
-    char info[8192];
-    glGetProgramInfoLog(prog, 8192, NULL, info);
-    printf("Failed to link program.\n%s\n", info);
+    printf("Failed to link program.\n");
     return GL_FALSE;
   }
   glUseProgram(prog);
