@@ -172,12 +172,14 @@ static void usage() {
 }
 
 int main(int argc, char *argv[]) {
-  jpeg_info info;
-  image img;
+  jpeg_decode_ctx_vtbl vtbl;
   int no_cpu;
   int no_gpu;
+  jpeg_info info;
+  image img;
   no_cpu = 0;
   no_gpu = 0;
+  vtbl = LIBJPEG_DECODE_CTX_VTBL;
   {
     int c;
     int loi;
@@ -210,63 +212,15 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
 
-  /* Decompress the image header and allocate texture memory.
-     We will have libjpeg directly decode the YUV image data into these
-      buffers so they can be uploaded to the GPU. */
+  /* Decompress the jpeg header and allocate memory for the image planes.
+     We will directly decode into these buffers and upload them to the GPU. */
   {
-    struct jpeg_decompress_struct cinfo;
-    struct jpeg_error_mgr jerr;
-    int hmax, vmax;
-    int i;
-
-    cinfo.err=jpeg_std_error(&jerr);
-    jpeg_create_decompress(&cinfo);
-
-    jpeg_mem_src(&cinfo, info.buf, info.size);
-    if (jpeg_read_header(&cinfo, TRUE) == JPEG_HEADER_OK) {
-      printf("read headers!\n");
-    }
-
-    img.width = cinfo.image_width;
-    img.height = cinfo.image_height;
-    img.nplanes = cinfo.num_components;
-    printf("width = %i, height = %i\n", img.width, img.height);
-
-    if (cinfo.num_components != NPLANES_MAX) {
-      fprintf(stderr, "Unsupported number of components %i\n",
-       cinfo.num_components);
-    }
-
-    hmax = 0;
-    vmax = 0;
-    for (i = 0; i < img.nplanes; i++) {
-      jpeg_component_info *comp;
-      comp = &cinfo.comp_info[i];
-      if (comp->h_samp_factor > hmax) {
-        hmax = comp->h_samp_factor;
-      }
-      if (comp->v_samp_factor > vmax) {
-        vmax = comp->v_samp_factor;
-      }
-    }
-
-    for (i = 0; i < cinfo.num_components; i++) {
-      jpeg_component_info *comp;
-      image_plane *plane;
-      comp = &cinfo.comp_info[i];
-      plane = &img.plane[i];
-      plane->width = comp->width_in_blocks << 3;
-      plane->height = comp->height_in_blocks << 3;
-      plane->xstride = 1;
-      plane->ystride = plane->xstride*plane->width;
-      plane->xdec = OD_ILOG(hmax) - OD_ILOG(comp->h_samp_factor);
-      plane->ydec = OD_ILOG(vmax) - OD_ILOG(comp->v_samp_factor);
-      plane->data = malloc(plane->ystride*plane->height);
-      printf("Plane %i: width = %4i, height = %4i, xdec = %i, ydec = %i\n",
-       i, plane->width, plane->height, plane->xdec, plane->ydec);
-    }
-
-    jpeg_destroy_decompress(&cinfo);
+    jpeg_decode_ctx *dec;
+    jpeg_header header;
+    dec = (*vtbl.decode_alloc)(&info);
+    (*vtbl.decode_header)(dec, &header);
+    image_init(&img, &header);
+    (*vtbl.decode_free)(dec);
   }
 
   /* Open a glfw context and run the entire libjpeg decoder inside the
