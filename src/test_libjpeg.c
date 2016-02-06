@@ -172,8 +172,7 @@ static void usage() {
 }
 
 int main(int argc, char *argv[]) {
-  unsigned char *jpeg_buf;
-  int jpeg_sz;
+  jpeg_info info;
   image img;
   int no_cpu;
   int no_gpu;
@@ -201,35 +200,12 @@ int main(int argc, char *argv[]) {
       }
     }
     /*Assume anything following the options is a file name.*/
-    jpeg_buf = NULL;
-    jpeg_sz = 0;
+    info.buf = NULL;
     for (; optind < argc; optind++) {
-      FILE *fp;
-      int size;
-      fp = fopen(argv[optind], "rb");
-      if (fp == NULL) {
-        fprintf(stderr, "Error, could not open jpeg file %s\n", argv[optind]);
-        return EXIT_FAILURE;
-      }
-      fseek(fp, 0, SEEK_END);
-      jpeg_sz = ftell(fp);
-      free(jpeg_buf);
-      jpeg_buf = malloc(jpeg_sz);
-      if (jpeg_buf == NULL) {
-        fprintf(stderr, "Error, could not allocate %i bytes\n", jpeg_sz);
-        return EXIT_FAILURE;
-      }
-      fseek(fp, 0, SEEK_SET);
-      size = fread(jpeg_buf, 1, jpeg_sz, fp);
-      if (size != jpeg_sz) {
-        fprintf(stderr, "Error reading jpeg file, got %i of %i bytes\n", size,
-         jpeg_sz);
-        return EXIT_FAILURE;
-      }
-      fclose(fp);
+      jpeg_info_init(&info, argv[optind]);
     }
   }
-  if (jpeg_sz == 0) {
+  if (info.buf == NULL) {
     usage();
     return EXIT_FAILURE;
   }
@@ -246,7 +222,7 @@ int main(int argc, char *argv[]) {
     cinfo.err=jpeg_std_error(&jerr);
     jpeg_create_decompress(&cinfo);
 
-    jpeg_mem_src(&cinfo, jpeg_buf, jpeg_sz);
+    jpeg_mem_src(&cinfo, info.buf, info.size);
     if (jpeg_read_header(&cinfo, TRUE) == JPEG_HEADER_OK) {
       printf("read headers!\n");
     }
@@ -446,7 +422,7 @@ int main(int argc, char *argv[]) {
         plane_pointer[1] = cbrow_pointer;
         plane_pointer[2] = crrow_pointer;
 
-        jpeg_mem_src(&cinfo, jpeg_buf, jpeg_sz);
+        jpeg_mem_src(&cinfo, info.buf, info.size);
         jpeg_read_header(&cinfo, TRUE);
 
         cinfo.raw_data_out = TRUE;
@@ -535,7 +511,7 @@ int main(int argc, char *argv[]) {
     glDeleteTextures(img.nplanes, tex);
   }
 
-  free(jpeg_buf);
+  jpeg_info_clear(&info);
   image_clear(&img);
   return EXIT_SUCCESS;
 }

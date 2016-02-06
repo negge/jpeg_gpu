@@ -3,6 +3,16 @@
 
 #define NPLANES_MAX (3)
 
+typedef struct jpeg_info jpeg_info;
+
+struct jpeg_info {
+  int size;
+  unsigned char *buf;
+};
+
+int jpeg_info_init(jpeg_info *info, const char *name);
+void jpeg_info_clear(jpeg_info *info);
+
 typedef struct image_plane image_plane;
 
 struct image_plane {
