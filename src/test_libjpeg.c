@@ -23,19 +23,19 @@ static const char YUV_FRAG[]="\
 #version 140\n\
 in vec2 out_tex;\n\
 out vec4 color;\n\
-uniform sampler2D y_tex;\n\
-uniform sampler2D u_tex;\n\
-uniform sampler2D v_tex;\n\
+uniform usampler2D y_tex;\n\
+uniform usampler2D u_tex;\n\
+uniform usampler2D v_tex;\n\
 void main() {\n\
   int s=int(out_tex.s);\n\
   int t=int(out_tex.t);\n\
-  float y=texelFetch(y_tex,ivec2(s,t),0).r;\n\
-  float u=texelFetch(u_tex,ivec2(s>>1,t>>1),0).r;\n\
-  float v=texelFetch(v_tex,ivec2(s>>1,t>>1),0).r;\n\
-  float r=y+1.402*(v-0.5);\n\
-  float g=y-0.34414*(u-0.5)-0.71414*(v-0.5);\n\
-  float b=y+1.772*(u-0.5);\n\
-  color=vec4(r,g,b,1.0);\n\
+  float y=float(texelFetch(y_tex,ivec2(s,t),0).r);\n\
+  float u=float(texelFetch(u_tex,ivec2(s>>1,t>>1),0).r);\n\
+  float v=float(texelFetch(v_tex,ivec2(s>>1,t>>1),0).r);\n\
+  float r=y+1.402*(v-128);\n\
+  float g=y-0.34414*(u-128)-0.71414*(v-128);\n\
+  float b=y+1.772*(u-128);\n\
+  color=vec4(r/255.0,g/255.0,b/255.0,1.0);\n\
 }";
 
 typedef struct image_plane image_plane;
@@ -310,8 +310,9 @@ int main(int argc, char *argv[]) {
       glActiveTexture(GL_TEXTURE0 + i);
       glBindTexture(GL_TEXTURE_2D, tex[i]);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, plane->width, plane->height, 0,
-       GL_RED, GL_UNSIGNED_BYTE, plane->data);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, plane->width, plane->height, 0,
+       GL_RED_INTEGER, GL_UNSIGNED_BYTE, plane->data);
     }
 
     switch (img.nplanes) {
@@ -456,8 +457,8 @@ int main(int argc, char *argv[]) {
         plane = &img.plane[i];
         glActiveTexture(GL_TEXTURE0+i);
         glBindTexture(GL_TEXTURE_2D, tex[i]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, plane->width, plane->height, 0,
-         GL_RED, GL_UNSIGNED_BYTE, plane->data);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, plane->width, plane->height, 0,
+         GL_RED_INTEGER, GL_UNSIGNED_BYTE, plane->data);
       }
 
       glClear(GL_COLOR_BUFFER_BIT);
