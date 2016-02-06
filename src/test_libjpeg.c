@@ -7,6 +7,9 @@
 
 #define NPLANES_MAX (3)
 
+#define DISABLE_CPU (1)
+#define DISABLE_GPU (0)
+
 #define NAME "test_libjpeg"
 
 static const char YUV_VERT[]="\
@@ -406,6 +409,7 @@ int main(int argc, char *argv[]) {
       JSAMPROW crrow_pointer[16];
       JSAMPROW *plane_pointer[3];
 
+#if !DISABLE_CPU
       cinfo.err=jpeg_std_error(&jerr);
       jpeg_create_decompress(&cinfo);
 
@@ -441,6 +445,7 @@ int main(int argc, char *argv[]) {
 
       jpeg_finish_decompress(&cinfo);
       jpeg_destroy_decompress(&cinfo);
+#endif
 
       if (first) {
         for (i = 0; i < img.nplanes; i++) {
@@ -459,8 +464,7 @@ int main(int argc, char *argv[]) {
         first = 0;
       }
 
-/* Set to 0 to turn off GPU code (and measure just the time spent in libjpeg. */
-#if 1
+#if !DISABLE_GPU
       for (i = 0; i < img.nplanes; i++) {
         image_plane *plane;
         plane = &img.plane[i];
