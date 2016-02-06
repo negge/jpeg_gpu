@@ -98,6 +98,8 @@ static void error_callback(int error, const char* description) {
 
 static void key_callback(GLFWwindow* window, int key, int scancode, int action,
  int mods) {
+  (void)scancode;
+  (void)mods;
   if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
     glfwSetWindowShouldClose(window, GL_TRUE);
   }
@@ -449,7 +451,6 @@ int main(int argc, char *argv[]) {
         }
         first = 0;
       }
-
 
 /* Set to 0 to turn off GPU code (and measure just the time spent in libjpeg. */
 #if 1
