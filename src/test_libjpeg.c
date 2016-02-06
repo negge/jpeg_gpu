@@ -297,8 +297,9 @@ int main(int argc, char *argv[]) {
     glfwSetKeyCallback(window, key_callback);
     glfwSwapInterval(0);
 
-    printf("OpenGL: %s\n",glGetString(GL_VERSION));
-    printf("  GLSL: %s\n",glGetString(GL_SHADING_LANGUAGE_VERSION));
+    printf("  OpenGL: %s\n",glGetString(GL_VERSION));
+    printf("    GLSL: %s\n",glGetString(GL_SHADING_LANGUAGE_VERSION));
+    printf("Renderer: %s\n",glGetString(GL_RENDERER));
 
     glViewport(0, 0, img.width, img.height);
 
