@@ -531,8 +531,13 @@ int main(int argc, char *argv[]) {
         double avg;
         char title[255];
         avg = 1000*(time - last)/frames;
-        sprintf(title, "%s - %4i FPS (%0.3f ms) %0.3f MBps", NAME, frames, avg,
-         frames*(pixels/1000000.0));
+        if (no_gpu) {
+          sprintf(title, "%s - %4i FPS (%0.3f ms)", NAME, frames, avg);
+        }
+        else {
+          sprintf(title, "%s - %4i FPS (%0.3f ms) %0.3f MBps", NAME, frames,
+           avg, frames*(pixels/1000000.0));
+        }
         glfwSetWindowTitle(window, title);
         frames = 0;
         last = time;
