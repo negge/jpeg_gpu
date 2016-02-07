@@ -136,6 +136,13 @@ static int libjpeg_decode_header(libjpeg_decode_ctx *ctx,
   return EXIT_SUCCESS;
 }
 
+static void libjpeg_decode_reset(libjpeg_decode_ctx *ctx, jpeg_info *info) {
+  jpeg_destroy_decompress(&ctx->cinfo);
+
+  jpeg_create_decompress(&ctx->cinfo);
+  jpeg_mem_src(&ctx->cinfo, info->buf, info->size);
+}
+
 static void libjpeg_decode_free(libjpeg_decode_ctx *ctx) {
   jpeg_destroy_decompress(&ctx->cinfo);
   free(ctx);
@@ -144,6 +151,7 @@ static void libjpeg_decode_free(libjpeg_decode_ctx *ctx) {
 const jpeg_decode_ctx_vtbl LIBJPEG_DECODE_CTX_VTBL = {
   (jpeg_decode_alloc_func)libjpeg_decode_alloc,
   (jpeg_decode_header_func)libjpeg_decode_header,
+  (jpeg_decode_reset_func)libjpeg_decode_reset,
   (jpeg_decode_free_func)libjpeg_decode_free
 };
 
@@ -196,6 +204,10 @@ static int xjpeg_decode_header(xjpeg_decode_ctx *ctx, jpeg_header *headers) {
   return EXIT_SUCCESS;
 }
 
+static void xjpeg_decode_reset(xjpeg_decode_ctx *ctx, jpeg_info *info) {
+  xjpeg_init(ctx, info->buf, info->size);
+}
+
 static void xjpeg_decode_free(xjpeg_decode_ctx *ctx) {
   free(ctx);
 }
@@ -203,5 +215,6 @@ static void xjpeg_decode_free(xjpeg_decode_ctx *ctx) {
 const jpeg_decode_ctx_vtbl XJPEG_DECODE_CTX_VTBL = {
   (jpeg_decode_alloc_func)xjpeg_decode_alloc,
   (jpeg_decode_header_func)xjpeg_decode_header,
+  (jpeg_decode_reset_func)xjpeg_decode_reset,
   (jpeg_decode_free_func)xjpeg_decode_free
 };
