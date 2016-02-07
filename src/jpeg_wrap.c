@@ -3,6 +3,7 @@
 #include <string.h>
 #include <jpeglib.h>
 #include "jpeg_wrap.h"
+#include "internal.h"
 
 typedef struct libjpeg_decode_ctx libjpeg_decode_ctx;
 
@@ -81,14 +82,10 @@ int image_init(image *img, jpeg_header *header) {
   for (i = 0; i < img->nplanes; i++) {
     jpeg_component *comp;
     comp = &header->comp[i];
-    if (comp->hsamp > hmax) {
-      hmax = comp->hsamp;
-    }
-    if (comp->vsamp > vmax) {
-      vmax = comp->vsamp;
-    }
+    hmax = OD_MAXI(hmax, comp->hsamp);
+    vmax = OD_MAXI(vmax, comp->vsamp);
   }
-  for (i = 0; i < header->ncomps; i++) {
+  for (i = 0; i < img->nplanes; i++) {
     jpeg_component *comp;
     image_plane *plane;
     comp = &header->comp[i];
