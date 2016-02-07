@@ -75,5 +75,6 @@ struct jpeg_decode_ctx_vtbl {
 };
 
 extern const jpeg_decode_ctx_vtbl LIBJPEG_DECODE_CTX_VTBL;
+extern const jpeg_decode_ctx_vtbl XJPEG_DECODE_CTX_VTBL;
 
 #endif

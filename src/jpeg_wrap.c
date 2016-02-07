@@ -3,6 +3,7 @@
 #include <string.h>
 #include <jpeglib.h>
 #include "jpeg_wrap.h"
+#include "xjpeg.h"
 #include "internal.h"
 
 typedef struct libjpeg_decode_ctx libjpeg_decode_ctx;
@@ -144,4 +145,63 @@ const jpeg_decode_ctx_vtbl LIBJPEG_DECODE_CTX_VTBL = {
   (jpeg_decode_alloc_func)libjpeg_decode_alloc,
   (jpeg_decode_header_func)libjpeg_decode_header,
   (jpeg_decode_free_func)libjpeg_decode_free
+};
+
+static xjpeg_decode_ctx *xjpeg_decode_alloc(jpeg_info *info) {
+  xjpeg_decode_ctx *ctx;
+  ctx = (xjpeg_decode_ctx *)malloc(sizeof(xjpeg_decode_ctx));
+  if (ctx != NULL) {
+    xjpeg_init(ctx, info->buf, info->size);
+  }
+  return ctx;
+}
+
+static int xjpeg_decode_header(xjpeg_decode_ctx *ctx, jpeg_header *headers) {
+  xjpeg_frame_header *frame;
+  int i;
+
+  xjpeg_decode(ctx, 1);
+
+  if (ctx->error) {
+    fprintf(stderr, "%s\n", ctx->error);
+    return EXIT_FAILURE;
+  }
+
+  frame = &ctx->frame;
+  if (!frame->valid) {
+    fprintf(stderr, "Error reading jpeg headers\n");
+    return EXIT_FAILURE;
+  }
+
+  if (frame->ncomps != 1 && frame->ncomps != 3) {
+    fprintf(stderr, "Unsupported number of components %i\n", frame->ncomps);
+    return EXIT_FAILURE;
+  }
+
+  headers->width = frame->width;
+  headers->height = frame->height;
+  headers->ncomps = frame->ncomps;
+
+  for (i = 0; i < headers->ncomps; i++) {
+    xjpeg_comp_info *info;
+    jpeg_component *comp;
+    info = &frame->comp[i];
+    comp = &headers->comp[i];
+    comp->hblocks = frame->nhmb*info->hsamp;
+    comp->vblocks = frame->nvmb*info->vsamp;
+    comp->hsamp = info->hsamp;
+    comp->vsamp = info->vsamp;
+  }
+
+  return EXIT_SUCCESS;
+}
+
+static void xjpeg_decode_free(xjpeg_decode_ctx *ctx) {
+  free(ctx);
+}
+
+const jpeg_decode_ctx_vtbl XJPEG_DECODE_CTX_VTBL = {
+  (jpeg_decode_alloc_func)xjpeg_decode_alloc,
+  (jpeg_decode_header_func)xjpeg_decode_header,
+  (jpeg_decode_free_func)xjpeg_decode_free
 };
