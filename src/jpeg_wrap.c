@@ -136,6 +136,51 @@ static int libjpeg_decode_header(libjpeg_decode_ctx *ctx,
   return EXIT_SUCCESS;
 }
 
+static int libjpeg_decode_image(libjpeg_decode_ctx *ctx, image *img,
+ jpeg_decode_out out) {
+  JSAMPROW yrow_pointer[16];
+  JSAMPROW cbrow_pointer[16];
+  JSAMPROW crrow_pointer[16];
+  JSAMPROW *plane_pointer[3];
+  int i;
+
+  plane_pointer[0] = yrow_pointer;
+  plane_pointer[1] = cbrow_pointer;
+  plane_pointer[2] = crrow_pointer;
+
+  if (out != JPEG_DECODE_YUV) {
+    fprintf(stderr, "Error, libjpeg wrapper only supports YUV output.\n");
+    return EXIT_FAILURE;
+  }
+
+  ctx->cinfo.raw_data_out = TRUE;
+  ctx->cinfo.do_fancy_upsampling = FALSE;
+  ctx->cinfo.dct_method = JDCT_IFAST;
+
+  jpeg_start_decompress(&ctx->cinfo);
+
+  while (ctx->cinfo.output_scanline < ctx->cinfo.output_height) {
+    int j;
+
+    for (i = 0; i < img->nplanes; i++) {
+      image_plane *plane;
+      int y_off;
+      plane = &img->plane[i];
+      y_off = ctx->cinfo.output_scanline >> plane->ydec;
+      for (j = 0; j < 16 >> plane->ydec; j++) {
+        plane_pointer[i][j]=
+         &plane->data[(y_off + j)*plane->width];
+      }
+    }
+
+    jpeg_read_raw_data(&ctx->cinfo, plane_pointer, 16);
+  }
+
+  jpeg_finish_decompress(&ctx->cinfo);
+
+  return EXIT_SUCCESS;
+}
+
 static void libjpeg_decode_reset(libjpeg_decode_ctx *ctx, jpeg_info *info) {
   jpeg_destroy_decompress(&ctx->cinfo);
 
@@ -151,6 +196,7 @@ static void libjpeg_decode_free(libjpeg_decode_ctx *ctx) {
 const jpeg_decode_ctx_vtbl LIBJPEG_DECODE_CTX_VTBL = {
   (jpeg_decode_alloc_func)libjpeg_decode_alloc,
   (jpeg_decode_header_func)libjpeg_decode_header,
+  (jpeg_decode_image_func)libjpeg_decode_image,
   (jpeg_decode_reset_func)libjpeg_decode_reset,
   (jpeg_decode_free_func)libjpeg_decode_free
 };
@@ -215,6 +261,7 @@ static void xjpeg_decode_free(xjpeg_decode_ctx *ctx) {
 const jpeg_decode_ctx_vtbl XJPEG_DECODE_CTX_VTBL = {
   (jpeg_decode_alloc_func)xjpeg_decode_alloc,
   (jpeg_decode_header_func)xjpeg_decode_header,
+  (jpeg_decode_image_func)NULL,
   (jpeg_decode_reset_func)xjpeg_decode_reset,
   (jpeg_decode_free_func)xjpeg_decode_free
 };

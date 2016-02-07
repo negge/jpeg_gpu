@@ -207,6 +207,7 @@ int main(int argc, char *argv[]) {
      This should only upload half as much data as an RGB texture for 4:2:0
       images. */
   {
+    jpeg_decode_ctx *dec;
     GLFWwindow *window;
     GLuint tex[NPLANES_MAX];
     GLuint prog;
@@ -323,6 +324,8 @@ int main(int argc, char *argv[]) {
     glBindFragDataLocation(prog, 0, "color");
     glUseProgram(prog);
 
+    dec = (*vtbl.decode_alloc)(&info);
+
     first = 0;
     last = glfwGetTime();
     frames = 0;
@@ -337,50 +340,13 @@ int main(int argc, char *argv[]) {
       double time;
 
       if (!no_cpu) {
-        struct jpeg_decompress_struct cinfo;
-        struct jpeg_error_mgr jerr;
+        jpeg_header header;
 
-        /* This code assumes 4:2:0 */
-        JSAMPROW yrow_pointer[16];
-        JSAMPROW cbrow_pointer[16];
-        JSAMPROW crrow_pointer[16];
-        JSAMPROW *plane_pointer[3];
-
-        cinfo.err=jpeg_std_error(&jerr);
-        jpeg_create_decompress(&cinfo);
-
-        plane_pointer[0] = yrow_pointer;
-        plane_pointer[1] = cbrow_pointer;
-        plane_pointer[2] = crrow_pointer;
-
-        jpeg_mem_src(&cinfo, info.buf, info.size);
-        jpeg_read_header(&cinfo, TRUE);
-
-        cinfo.raw_data_out = TRUE;
-        cinfo.do_fancy_upsampling = FALSE;
-        cinfo.dct_method = JDCT_IFAST;
-
-        jpeg_start_decompress(&cinfo);
-
-        while (cinfo.output_scanline<cinfo.output_height) {
-          int j;
-
-          for (i = 0; i < img.nplanes; i++) {
-            image_plane *plane;
-            int y_off;
-            plane = &img.plane[i];
-            y_off = cinfo.output_scanline >> plane->ydec;
-            for (j = 0; j < 16 >> plane->ydec; j++) {
-              plane_pointer[i][j]=
-               &plane->data[(y_off + j)*plane->width];
-            }
-          }
-
-          jpeg_read_raw_data(&cinfo,plane_pointer, 16);
+        (*vtbl.decode_reset)(dec, &info);
+        (*vtbl.decode_header)(dec, &header);
+        if ((*vtbl.decode_image)(dec, &img, JPEG_DECODE_YUV) != EXIT_SUCCESS) {
+         break;
         }
-
-        jpeg_finish_decompress(&cinfo);
-        jpeg_destroy_decompress(&cinfo);
       }
 
       if (first) {
@@ -440,6 +406,7 @@ int main(int argc, char *argv[]) {
     glfwDestroyWindow(window);
 
     glDeleteTextures(img.nplanes, tex);
+    (*vtbl.decode_free)(dec);
   }
 
   jpeg_info_clear(&info);
