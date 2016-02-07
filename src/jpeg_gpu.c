@@ -3,6 +3,7 @@
 #include <string.h>
 #define GL_GLEXT_PROTOTYPES
 #include <GLFW/glfw3.h>
+#include "internal.h"
 
 #define NPLANES_MAX (3)
 
@@ -32,31 +33,6 @@
   while (0)
 
 #define NAME "jpeg_gpu"
-
-int od_ilog(uint32_t _v) {
-  /*On a Pentium M, this branchless version tested as the fastest on
-     1,000,000,000 random 32-bit integers, edging out a similar version with
-     branches, and a 256-entry LUT version.*/
-  int ret;
-  int m;
-  ret = !!_v;
-  m = !!(_v&0xFFFF0000)<<4;
-  _v >>= m;
-  ret |= m;
-  m = !!(_v&0xFF00)<<3;
-  _v >>= m;
-  ret |= m;
-  m = !!(_v&0xF0)<<2;
-  _v >>= m;
-  ret |= m;
-  m = !!(_v&0xC)<<1;
-  _v >>= m;
-  ret |= m;
-  ret += !!(_v&0x2);
-  return ret;
-}
-
-#define OD_ILOG(x) (od_ilog(x))
 
 #define PAD_POWER2(x, b) ((x + ((1 << b) - 1)) & ~((1 << b) - 1))
 
