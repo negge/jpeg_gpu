@@ -6,13 +6,6 @@
 #include "xjpeg.h"
 #include "internal.h"
 
-typedef struct libjpeg_decode_ctx libjpeg_decode_ctx;
-
-struct libjpeg_decode_ctx {
-  struct jpeg_decompress_struct cinfo;
-  struct jpeg_error_mgr jerr;
-};
-
 int jpeg_info_init(jpeg_info *info, const char *name) {
   FILE *fp;
   int size;
@@ -89,6 +82,13 @@ void image_clear(image *img) {
   }
   memset(img, 0, sizeof(image));
 }
+
+typedef struct libjpeg_decode_ctx libjpeg_decode_ctx;
+
+struct libjpeg_decode_ctx {
+  struct jpeg_decompress_struct cinfo;
+  struct jpeg_error_mgr jerr;
+};
 
 static libjpeg_decode_ctx *libjpeg_decode_alloc(jpeg_info *info) {
   libjpeg_decode_ctx *ctx;
