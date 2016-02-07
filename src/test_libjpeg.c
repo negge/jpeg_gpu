@@ -154,7 +154,7 @@ int main(int argc, char *argv[]) {
   image img;
   no_cpu = 0;
   no_gpu = 0;
-  vtbl = LIBJPEG_DECODE_CTX_VTBL;
+  vtbl = XJPEG_DECODE_CTX_VTBL;
   {
     int c;
     int loi;
@@ -197,6 +197,8 @@ int main(int argc, char *argv[]) {
     image_init(&img, &header);
     (*vtbl.decode_free)(dec);
   }
+
+  vtbl = LIBJPEG_DECODE_CTX_VTBL;
 
   /* Open a glfw context and run the entire libjpeg decoder inside the
       main loop.
