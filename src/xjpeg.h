@@ -1,6 +1,8 @@
 #if !defined(_xjpeg_H)
 # define _xjpeg_h (1)
 
+# include "image.h"
+
 # define NQUANT_MAX (4)
 # define NHUFF_MAX (4)
 # define NCOMPS_MAX (3)
@@ -69,10 +71,22 @@ struct xjpeg_frame_header {
   unsigned short nvmb;
 };
 
+typedef struct xjpeg_scan_comp xjpeg_scan_comp;
+
+struct xjpeg_scan_comp {
+  unsigned char id;
+  /* DC entropy coding table index */
+  unsigned char td;
+  /* AC entropy coding table index */
+  unsigned char ta;
+};
+
 typedef struct xjpeg_scan_header xjpeg_scan_header;
 
 struct xjpeg_scan_header {
   int valid;
+  unsigned char ncomps;
+  xjpeg_scan_comp comp[NCOMPS_MAX];
 };
 
 typedef struct xjpeg_decode_ctx xjpeg_decode_ctx;
@@ -103,6 +117,6 @@ struct xjpeg_decode_ctx {
 };
 
 void xjpeg_init(xjpeg_decode_ctx *ctx, const unsigned char *buf, int size);
-void xjpeg_decode(xjpeg_decode_ctx *ctx, int headers_only);
+void xjpeg_decode(xjpeg_decode_ctx *ctx, int headers_only, image *img);
 
 #endif

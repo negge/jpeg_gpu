@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "xjpeg.h"
+#include "dct.h"
 #include "internal.h"
 
 #define LOOKUP_BITS (8)
@@ -79,6 +80,97 @@ static void printBits(int value, int bits) {
     XJPEG_ERROR(ctx, (ctx)->size < 2, "Error reading past the end of file."); \
     ret = ((ctx)->pos[0] << 8) | (ctx)->pos[1]; \
     XJPEG_SKIP_BYTES(ctx, 2); \
+  } \
+  while (0)
+
+#define XJPEG_FILL_BITS(ctx, nbits) \
+  do { \
+    while ((ctx)->bits < nbits) { \
+      unsigned char byte; \
+      XJPEG_ERROR(ctx, ctx->marker, "Error found marker when filling bits."); \
+      XJPEG_DECODE_BYTE(ctx, byte); \
+      if (byte == 0xFF) { \
+        do { \
+          XJPEG_DECODE_BYTE(ctx, byte); \
+        } \
+        while (byte == 0xFF); \
+        if (byte == 0) { \
+          byte = 0xFF; \
+        } \
+        else { \
+          (ctx)->marker = byte; \
+          (ctx)->bits += nbits; \
+          (ctx)->bitbuf <<= nbits; \
+          break; \
+        } \
+      } \
+      (ctx)->bits += 8; \
+      (ctx)->bitbuf = ((ctx)->bitbuf << 8) | byte; \
+    } \
+  } \
+  while (0)
+
+#define XJPEG_SKIP_BITS(ctx, nbits) \
+  do { \
+    XJPEG_FILL_BITS(ctx, nbits); \
+    (ctx)->bits -= nbits; \
+  } \
+  while (0)
+
+#define XJPEG_PEEK_BITS(ctx, nbits, ret) \
+  do { \
+    XJPEG_FILL_BITS(ctx, nbits); \
+    XJPEG_ERROR(ctx, (ctx)->bits < nbits, "Error not enough bits to peek."); \
+    ret = (((ctx)->bitbuf >> ((ctx)->bits - (nbits))) & ((1 << (nbits)) - 1)); \
+  } \
+  while (0)
+
+#define XJPEG_DECODE_BITS(ctx, nbits, ret) \
+  do { \
+    XJPEG_FILL_BITS(ctx, nbits); \
+    XJPEG_ERROR(ctx, (ctx)->bits < nbits, "Error not enough bits to get."); \
+    ret = (((ctx)->bitbuf >> ((ctx)->bits - (nbits))) & ((1 << (nbits)) - 1)); \
+    (ctx)->bits -= nbits; \
+  } \
+  while (0)
+
+#define XJPEG_DECODE_HUFF(ctx, huff, symbol) \
+  do { \
+    int bits; \
+    int value; \
+    XJPEG_FILL_BITS(ctx, 2*LOOKUP_BITS); \
+    XJPEG_PEEK_BITS(ctx, LOOKUP_BITS, value); \
+    symbol = (huff)->lookup[value]; \
+    bits = symbol >> LOOKUP_BITS; \
+    symbol &= (1 << LOOKUP_BITS) - 1; \
+    XJPEG_SKIP_BITS(ctx, bits); \
+    if (bits > LOOKUP_BITS) { \
+      value = ((ctx)->bitbuf >> (ctx)->bits) & ((1 << bits) - 1); \
+      while (value > (huff)->maxcode[bits - 1]) { \
+        int bit; \
+        XJPEG_DECODE_BITS(ctx, 1, bit); \
+        value = (value << 1) | bit; \
+        bits++; \
+      } \
+      symbol = (huff)->symbol[value + (huff)->index[bits - 1]]; \
+    } \
+    XJPEG_LOG(("bits = %i, code = %02X, symbol = %02x\n", bits, \
+     value >> (LOOKUP_BITS - bits), symbol)); \
+  } \
+  while (0)
+
+#define XJPEG_DECODE_VLC(ctx, huff, symbol, value) \
+  do { \
+    int len; \
+    XJPEG_DECODE_HUFF(ctx, huff, symbol); \
+    len = symbol & 0xf; \
+    XJPEG_DECODE_BITS(ctx, len, value); \
+    XJPEG_LOG(("len = %i\n", len)); \
+    if (value < 1 << (len - 1)) { \
+      value += 1 - (1 << len); \
+    } \
+    XJPEG_LOG(("vlc = %i\n", value)); \
+    XJPEG_LOG(("\n")); \
   } \
   while (0)
 
@@ -284,6 +376,179 @@ static void xjpeg_decode_sof(xjpeg_decode_ctx *ctx) {
    hmax, vmax, mcu_width, mcu_height, frame->nhmb, frame->nvmb));
 }
 
+static void xjpeg_decode_rsi(xjpeg_decode_ctx *ctx) {
+  unsigned short len;
+  XJPEG_DECODE_SHORT(ctx, len);
+  len -= 2;
+  XJPEG_DECODE_SHORT(ctx, ctx->restart_interval);
+  XJPEG_LOG(("Restart Interval %i\n", ctx->restart_interval));
+  len -= 2;
+  XJPEG_ERROR(ctx, len != 0, "Error decoding DRI, unprocessed bytes.");
+}
+
+static void xjpeg_decode_scan(xjpeg_decode_ctx *ctx,
+ image_plane *plane[NPLANES_MAX]) {
+  int mcu_counter;
+  int rst_counter;
+  int dc_pred[NCOMPS_MAX];
+  int mbx;
+  int mby;
+  mcu_counter = ctx->restart_interval;
+  rst_counter = 0;
+  memset(dc_pred, 0, sizeof(dc_pred));
+  for (mby = 0; mby < ctx->frame.nvmb; mby++) {
+    for (mbx = 0; mbx < ctx->frame.nhmb; mbx++) {
+      int i;
+      xjpeg_scan_comp *comp;
+      for (i = 0, comp = ctx->scan.comp; i < ctx->scan.ncomps; i++, comp++) {
+        xjpeg_comp_info *pi;
+        image_plane *ip;
+        int sby;
+        int sbx;
+        pi = &ctx->frame.comp[i];
+        ip = plane[i];
+        for (sby = 0; sby < pi->vsamp; sby++) {
+          for (sbx = 0; sbx < pi->hsamp; sbx++) {
+            int block[64];
+            int symbol;
+            int value;
+            int j, k;
+            memset(block, 0, sizeof(block));
+            XJPEG_DECODE_VLC(ctx, &ctx->dc_huff[comp->td], symbol, value);
+            XJPEG_LOG(("dc = %i\n", value));
+            dc_pred[i] += value;
+            XJPEG_LOG(("dc_pred = %i\n", pred[i]));
+            j = 0;
+            block[0] = dc_pred[i]*ctx->quant[pi->tq].tbl[0];
+            do {
+              XJPEG_DECODE_VLC(ctx, &ctx->ac_huff[comp->ta], symbol, value);
+              if (!symbol) {
+                XJPEG_LOG(("****************** EOB at j = %i\n\n", j));
+                break;
+              }
+              j += (symbol >> 4) + 1;
+              XJPEG_LOG(("j = %i, offset = %i, value = %i, dequant = %i\n", j,
+               (symbol >> 4) + 1, value, value*ctx->quant[pi->tq].tbl[j]));
+              XJPEG_ERROR(ctx, j > 63, "Error indexing outside block.");
+              block[DE_ZIG_ZAG[j]] = value*ctx->quant[pi->tq].tbl[j];
+            }
+            while (j < 63);
+#if LOGGING_ENABLED
+            for (j = 1; j <= 64; j++) {
+              XJPEG_LOG("%5i%s", block[j - 1], j & 0x7 ? ", " : "\n");
+            }
+#endif
+            od_bin_idct8x8(block, 8, block, 8);
+            {
+              unsigned char *data;
+              int *b;
+              data = ip->data +
+               ((mby*pi->vsamp + sby)*ip->ystride << 3) +
+               ((mbx*pi->hsamp + sbx)*ip->xstride << 3);
+              b = block;
+              for (k = 0; k < 8; k++) {
+                unsigned char *row;
+                row = data;
+                for (j = 0; j < 8; j++) {
+                  *row = OD_CLAMP255(*b + 128);
+                  row++;
+                  b++;
+                }
+                data += ip->ystride;
+              }
+            }
+          }
+        }
+      }
+      mcu_counter--;
+      XJPEG_LOG(("mbx = %i, mby = %i, rst_counter = %i, mcu_counter = %i\n",
+       mbx, mby, rst_counter, mcu_counter));
+      if (ctx->restart_interval && mcu_counter == 0) {
+        XJPEG_ERROR(ctx, !ctx->marker, "Error, expected to find marker.");
+        switch (ctx->marker) {
+          case 0xD0 :
+          case 0xD1 :
+          case 0xD2 :
+          case 0xD3 :
+          case 0xD4 :
+          case 0xD5 :
+          case 0xD6 :
+          case 0xD7 : {
+            XJPEG_ERROR(ctx, (ctx->marker & 0x7) != (rst_counter & 0x7),
+              "Error invalid RST counter in marker.");
+            ctx->marker = 0;
+            ctx->bits = 0;
+            mcu_counter = ctx->restart_interval;
+            rst_counter++;
+            for (i = 0; i < ctx->scan.ncomps; i++) {
+              dc_pred[i] = 0;
+            }
+            break;
+          }
+          /* End of Image */
+          case 0xD9 : {
+            return;
+          }
+          default : {
+            XJPEG_ERROR(ctx, 1, "Error, unknown marker found in scan.");
+          }
+        }
+      }
+    }
+  }
+}
+
+static void xjpeg_decode_sos(xjpeg_decode_ctx *ctx, image *img) {
+  unsigned short len;
+  xjpeg_scan_header *scan;
+  int i, j;
+  image_plane *plane[NPLANES_MAX];
+  unsigned char byte;
+  XJPEG_DECODE_SHORT(ctx, len);
+  len -= 2;
+  XJPEG_ERROR(ctx, len < 6, "Error SOS needs at least 6 bytes");
+  scan = &ctx->scan;
+  XJPEG_ERROR(ctx, scan->valid, "Error multiple SOS not supported.");
+  scan->valid = 1;
+  XJPEG_DECODE_BYTE(ctx, scan->ncomps);
+  XJPEG_ERROR(ctx, scan->ncomps == 0 || scan->ncomps > 4,
+   "Error SOS expected Ns value 1 to 4.");
+  len--;
+  XJPEG_ERROR(ctx, scan->ncomps != 1 && scan->ncomps != 3,
+   "Error only scans with 1 or 3 components supported");
+  for (i = 0; i < scan->ncomps; i++) {
+    xjpeg_scan_comp *comp;
+    comp = &scan->comp[i];
+    XJPEG_DECODE_BYTE(ctx, comp->id);
+    plane[i] = NULL;
+    for (j = 0; j < ctx->frame.ncomps; j++) {
+      if (ctx->frame.comp[j].id == comp->id) {
+        plane[i] = &img->plane[j];
+        break;
+      }
+    }
+    XJPEG_ERROR(ctx, !plane[i], "Error SOS references invalid component.");
+    XJPEG_DECODE_BYTE(ctx, byte);
+    comp->td = byte >> 4;
+    XJPEG_ERROR(ctx, !ctx->dc_huff[comp->td].valid,
+     "Error SOS component references invalid DC entropy table.");
+    comp->ta = byte & 0x7;
+    XJPEG_ERROR(ctx, !ctx->ac_huff[comp->ta].valid,
+     "Error SOS component references invalid AC entropy table.");
+    len -= 2;
+  }
+  XJPEG_DECODE_BYTE(ctx, byte);
+  XJPEG_ERROR(ctx, byte != 0, "Error SOS expected Ss value 0.");
+  XJPEG_DECODE_BYTE(ctx, byte);
+  XJPEG_ERROR(ctx, byte != 63, "Error SOS expected Se value 0.");
+  XJPEG_DECODE_BYTE(ctx, byte);
+  XJPEG_ERROR(ctx, byte >> 4 != 0, "Error SOS expected Ah value 0.");
+  XJPEG_ERROR(ctx, byte & 0x7 != 0, "Error SOS expected Al value 0.");
+  len -= 3;
+  XJPEG_ERROR(ctx, len != 0, "Error decoding SOS, unprocessed bytes.");
+  xjpeg_decode_scan(ctx, plane);
+}
+
 static void xjpeg_skip_marker(xjpeg_decode_ctx *ctx) {
   unsigned short len;
   XJPEG_DECODE_SHORT(ctx, len);
@@ -291,7 +556,7 @@ static void xjpeg_skip_marker(xjpeg_decode_ctx *ctx) {
   XJPEG_SKIP_BYTES(ctx, len - 2);
 }
 
-void xjpeg_decode(xjpeg_decode_ctx *ctx, int headers_only) {
+void xjpeg_decode(xjpeg_decode_ctx *ctx, int headers_only, image *img) {
   while (!ctx->error && !ctx->end_of_image) {
     unsigned char marker;
     marker = ctx->marker;
@@ -331,6 +596,16 @@ void xjpeg_decode(xjpeg_decode_ctx *ctx, int headers_only) {
       /* Start of Frame (SOF0 Baseline DCT) */
       case 0xC0 : {
         xjpeg_decode_sof(ctx);
+        break;
+      }
+      /* Restart Interval */
+      case 0xDD : {
+        xjpeg_decode_rsi(ctx);
+        break;
+      }
+      /* Start of Scans */
+      case 0xDA : {
+        xjpeg_decode_sos(ctx, img);
         break;
       }
       default : {

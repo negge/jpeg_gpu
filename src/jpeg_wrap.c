@@ -206,7 +206,7 @@ static int xjpeg_decode_header(xjpeg_decode_ctx *ctx, jpeg_header *headers) {
   xjpeg_frame_header *frame;
   int i;
 
-  xjpeg_decode(ctx, 1);
+  xjpeg_decode(ctx, 1, NULL);
 
   if (ctx->error) {
     fprintf(stderr, "%s\n", ctx->error);
@@ -242,6 +242,23 @@ static int xjpeg_decode_header(xjpeg_decode_ctx *ctx, jpeg_header *headers) {
   return EXIT_SUCCESS;
 }
 
+static int xjpeg_decode_image(xjpeg_decode_ctx *ctx, image *img,
+ jpeg_decode_out out) {
+  if (out != JPEG_DECODE_YUV) {
+    fprintf(stderr, "Error, libjpeg wrapper only supports YUV output.\n");
+    return EXIT_FAILURE;
+  }
+
+  xjpeg_decode(ctx, 0, img);
+
+  if (ctx->error) {
+    fprintf(stderr, "%s\n", ctx->error);
+    return EXIT_FAILURE;
+  }
+
+  return EXIT_SUCCESS;
+}
+
 static void xjpeg_decode_reset(xjpeg_decode_ctx *ctx, jpeg_info *info) {
   xjpeg_init(ctx, info->buf, info->size);
 }
@@ -253,7 +270,7 @@ static void xjpeg_decode_free(xjpeg_decode_ctx *ctx) {
 const jpeg_decode_ctx_vtbl XJPEG_DECODE_CTX_VTBL = {
   (jpeg_decode_alloc_func)xjpeg_decode_alloc,
   (jpeg_decode_header_func)xjpeg_decode_header,
-  (jpeg_decode_image_func)NULL,
+  (jpeg_decode_image_func)xjpeg_decode_image,
   (jpeg_decode_reset_func)xjpeg_decode_reset,
   (jpeg_decode_free_func)xjpeg_decode_free
 };
