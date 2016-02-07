@@ -75,14 +75,6 @@ int image_init(image *img, jpeg_header *header) {
   return EXIT_SUCCESS;
 }
 
-void image_clear(image *img) {
-  int i;
-  for (i = 0; i < img->nplanes; i++) {
-    free(img->plane[i].data);
-  }
-  memset(img, 0, sizeof(image));
-}
-
 typedef struct libjpeg_decode_ctx libjpeg_decode_ctx;
 
 struct libjpeg_decode_ctx {
