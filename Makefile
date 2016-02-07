@@ -8,8 +8,8 @@ LIBS := `pkg-config --libs glfw3` `pkg-config --libs gl` -ljpeg
 
 
 CFLAGS := -std=c89 -pedantic
-CFLAGS += -O0 -Wall -Wextra -Wno-parentheses -pedantic
-CFLAGS += -g
+CFLAGS += -O2 -Wall -Wextra -Wno-parentheses -pedantic
+#CFLAGS += -g
 CFLAGS += `pkg-config --cflags glfw3`
 
 guard=@mkdir -p $(@D)
