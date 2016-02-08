@@ -8,7 +8,7 @@ LIBS := `pkg-config --libs glfw3` `pkg-config --libs gl` -ljpeg
 
 
 CFLAGS := -std=c89 -pedantic
-CFLAGS += -O2 -Wall -Wextra -Wno-parentheses -pedantic
+CFLAGS += -O2 -Wall -Wextra -Wno-parentheses -pedantic -Wno-overlength-strings
 #CFLAGS += -g
 CFLAGS += `pkg-config --cflags glfw3`
 

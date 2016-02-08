@@ -138,13 +138,14 @@ static GLint bind_texture(GLuint prog,const char *name, int tex) {
   return GL_TRUE;
 }
 
-static const char *OPTSTRING = "hi:";
+static const char *OPTSTRING = "hi:o:";
 
 static const struct option OPTIONS[] = {
   { "help", no_argument, NULL, 'h' },
   { "no-cpu", no_argument, NULL, 0 },
   { "no-gpu", no_argument, NULL, 0 },
   { "impl", required_argument, NULL, 'i' },
+  { "out", required_argument, NULL, 'o' },
   { NULL, 0, NULL, 0 }
 };
 
@@ -157,7 +158,11 @@ static void usage() {
    "     --no-gpu                    Disable GPU decoding in main loop.\n"
    "  -i --impl <decoder>            Software decoder to use.\n"
    "                                 libjpeg (default) => platform libjpeg\n"
-   "                                 xjpeg => project decoder\n\n"
+   "                                 xjpeg => project decoder\n"
+   "  -o --out <format>              Format software decoder should output\n"
+   "                                  and send to the GPU for display.\n"
+   "                                 yuv (default) => YUV (4:4:4 or 4:2:0)\n"
+   "                                 rgb => RGB (4:4:4)\n\n"
    " %s accepts only 8-bit non-hierarchical JPEG files.\n\n", NAME, NAME);
 }
 
@@ -195,6 +200,20 @@ int main(int argc, char *argv[]) {
           }
           else {
             fprintf(stderr, "Invalid decoder implementation: %s\n", optarg);
+            usage();
+            return EXIT_FAILURE;
+          }
+          break;
+        }
+        case 'o' : {
+          if (strcmp("yuv", optarg) == 0) {
+            out = JPEG_DECODE_YUV;
+          }
+          else if (strcmp("rgb", optarg) == 0) {
+            out = JPEG_DECODE_RGB;
+          }
+          else {
+            fprintf(stderr, "Invalid decoder output format: %s\n", optarg);
             usage();
             return EXIT_FAILURE;
           }
