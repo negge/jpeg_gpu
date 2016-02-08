@@ -61,45 +61,48 @@ static int libjpeg_decode_header(libjpeg_decode_ctx *ctx,
 
 static int libjpeg_decode_image(libjpeg_decode_ctx *ctx, image *img,
  jpeg_decode_out out) {
-  JSAMPROW yrow_pointer[16];
-  JSAMPROW cbrow_pointer[16];
-  JSAMPROW crrow_pointer[16];
-  JSAMPROW *plane_pointer[3];
-  int i;
+  switch (out) {
+    case JPEG_DECODE_YUV : {
+      JSAMPROW yrow_pointer[16];
+      JSAMPROW cbrow_pointer[16];
+      JSAMPROW crrow_pointer[16];
+      JSAMPROW *plane_pointer[3];
 
-  plane_pointer[0] = yrow_pointer;
-  plane_pointer[1] = cbrow_pointer;
-  plane_pointer[2] = crrow_pointer;
+      plane_pointer[0] = yrow_pointer;
+      plane_pointer[1] = cbrow_pointer;
+      plane_pointer[2] = crrow_pointer;
 
-  if (out != JPEG_DECODE_YUV) {
-    fprintf(stderr, "Error, libjpeg wrapper only supports YUV output.\n");
-    return EXIT_FAILURE;
-  }
+      ctx->cinfo.raw_data_out = TRUE;
+      ctx->cinfo.do_fancy_upsampling = FALSE;
+      ctx->cinfo.dct_method = JDCT_IFAST;
 
-  ctx->cinfo.raw_data_out = TRUE;
-  ctx->cinfo.do_fancy_upsampling = FALSE;
-  ctx->cinfo.dct_method = JDCT_IFAST;
+      jpeg_start_decompress(&ctx->cinfo);
 
-  jpeg_start_decompress(&ctx->cinfo);
+      while (ctx->cinfo.output_scanline < ctx->cinfo.output_height) {
+        int i, j;
 
-  while (ctx->cinfo.output_scanline < ctx->cinfo.output_height) {
-    int j;
+        for (i = 0; i < img->nplanes; i++) {
+          image_plane *plane;
+          int y_off;
+          plane = &img->plane[i];
+          y_off = ctx->cinfo.output_scanline >> plane->ydec;
+          for (j = 0; j < 16 >> plane->ydec; j++) {
+            plane_pointer[i][j]=
+             &plane->data[(y_off + j)*plane->width];
+          }
+        }
 
-    for (i = 0; i < img->nplanes; i++) {
-      image_plane *plane;
-      int y_off;
-      plane = &img->plane[i];
-      y_off = ctx->cinfo.output_scanline >> plane->ydec;
-      for (j = 0; j < 16 >> plane->ydec; j++) {
-        plane_pointer[i][j]=
-         &plane->data[(y_off + j)*plane->width];
+        jpeg_read_raw_data(&ctx->cinfo, plane_pointer, 16);
       }
+
+      jpeg_finish_decompress(&ctx->cinfo);
+      break;
     }
-
-    jpeg_read_raw_data(&ctx->cinfo, plane_pointer, 16);
+    default : {
+      fprintf(stderr, "Unsupported output %i for libjpeg wrapper.", out);
+      return EXIT_FAILURE;
+    }
   }
-
-  jpeg_finish_decompress(&ctx->cinfo);
 
   return EXIT_SUCCESS;
 }
@@ -175,18 +178,20 @@ static int xjpeg_decode_header(xjpeg_decode_ctx *ctx, jpeg_header *headers) {
 
 static int xjpeg_decode_image(xjpeg_decode_ctx *ctx, image *img,
  jpeg_decode_out out) {
-  if (out != JPEG_DECODE_YUV) {
-    fprintf(stderr, "Error, libjpeg wrapper only supports YUV output.\n");
-    return EXIT_FAILURE;
+  switch (out) {
+    case JPEG_DECODE_YUV : {
+      xjpeg_decode(ctx, 0, img);
+      if (ctx->error) {
+        fprintf(stderr, "%s\n", ctx->error);
+        return EXIT_FAILURE;
+      }
+      break;
+    }
+    default : {
+      fprintf(stderr, "Unsupported output %i for xjpeg wrapper.", out);
+      return EXIT_FAILURE;
+    }
   }
-
-  xjpeg_decode(ctx, 0, img);
-
-  if (ctx->error) {
-    fprintf(stderr, "%s\n", ctx->error);
-    return EXIT_FAILURE;
-  }
-
   return EXIT_SUCCESS;
 }
 
