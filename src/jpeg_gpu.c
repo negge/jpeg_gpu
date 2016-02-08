@@ -9,7 +9,7 @@
 
 #define NAME "jpeg_gpu"
 
-static const char YUV_VERT[]="\
+static const char TEX_VERT[]="\
 #version 140\n\
 in vec3 in_pos;\n\
 in ivec2 in_tex;\n\
@@ -316,7 +316,7 @@ int main(int argc, char *argv[]) {
             break;
           }
           case 3 : {
-            if (!setup_shader(&prog, YUV_VERT, YUV_FRAG)) {
+            if (!setup_shader(&prog, TEX_VERT, YUV_FRAG)) {
               return EXIT_FAILURE;
             }
             if (!bind_texture(prog, "y_tex", 0)) {
@@ -341,7 +341,7 @@ int main(int argc, char *argv[]) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8UI, img.width, img.height,
          0, GL_RGB_INTEGER, GL_UNSIGNED_BYTE, img.pixels);
-        if (!setup_shader(&prog, YUV_VERT, RGB_FRAG)) {
+        if (!setup_shader(&prog, TEX_VERT, RGB_FRAG)) {
           return EXIT_FAILURE;
         }
         if (!bind_texture(prog, "rgb_tex", 0)) {
