@@ -16,6 +16,7 @@ struct image_plane {
   unsigned short width;
   unsigned short height;
   unsigned char *data;
+  short *coef;
 };
 
 typedef struct image image;

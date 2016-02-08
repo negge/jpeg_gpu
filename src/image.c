@@ -38,6 +38,12 @@ int image_init(image *img, jpeg_header *header) {
       image_clear(img);
       return EXIT_FAILURE;
     }
+    plane->coef = od_aligned_malloc(plane->width*plane->height*sizeof(short),
+     IMAGE_ALIGN);
+    if (plane->coef == NULL) {
+      image_clear(img);
+      return EXIT_FAILURE;
+    }
   }
   return EXIT_SUCCESS;
 }
@@ -46,6 +52,7 @@ void image_clear(image *img) {
   int i;
   for (i = 0; i < img->nplanes; i++) {
     od_aligned_free(img->plane[i].data);
+    od_aligned_free(img->plane[i].coef);
   }
   memset(img, 0, sizeof(image));
 }

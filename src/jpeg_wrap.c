@@ -62,6 +62,30 @@ static int libjpeg_decode_header(libjpeg_decode_ctx *ctx,
 static int libjpeg_decode_image(libjpeg_decode_ctx *ctx, image *img,
  jpeg_decode_out out) {
   switch (out) {
+    case JPEG_DECODE_QUANT : {
+      int i, j;
+      jvirt_barray_ptr *coeffs;
+      coeffs = jpeg_read_coefficients(&ctx->cinfo);
+      for (i = 0; i < ctx->cinfo.num_components; i++) {
+        jpeg_component_info *info;
+        JBLOCKARRAY buf;
+        short *coef;
+        JDIMENSION r, bx;
+        info = &ctx->cinfo.comp_info[i];
+        coef = img->plane[i].coef;
+        for (r = 0; r < info->height_in_blocks; r += info->h_samp_factor) {
+          buf = (ctx->cinfo.mem->access_virt_barray)
+           ((j_common_ptr)&ctx->cinfo, coeffs[i], r, info->h_samp_factor, 0);
+          for (j = 0; j < info->h_samp_factor; j++) {
+            for (bx = 0; bx < info->width_in_blocks; bx++) {
+              memcpy(coef, buf[j][bx], sizeof(JBLOCK));
+              coef += 64;
+            }
+          }
+        }
+      }
+      break;
+    }
     case JPEG_DECODE_YUV : {
       JSAMPROW yrow_pointer[16];
       JSAMPROW cbrow_pointer[16];
