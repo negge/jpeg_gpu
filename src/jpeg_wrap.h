@@ -4,8 +4,6 @@
 #include "image.h"
 #include "jpeg_info.h"
 
-int image_init(image *img, jpeg_header *header);
-
 typedef struct jpeg_decode_ctx jpeg_decode_ctx;
 
 typedef enum jpeg_decode_out {

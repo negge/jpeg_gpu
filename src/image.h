@@ -1,6 +1,8 @@
 #if !defined(_image_H)
 # define _image_H (1)
 
+#include "jpeg_info.h"
+
 #define NPLANES_MAX (3)
 
 typedef struct image_plane image_plane;
@@ -25,6 +27,7 @@ struct image {
   image_plane plane[NPLANES_MAX];
 };
 
+int image_init(image *img, jpeg_header *header);
 void image_clear(image *img);
 
 #endif
