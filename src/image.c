@@ -3,6 +3,8 @@
 #include "image.h"
 #include "internal.h"
 
+#define IMAGE_ALIGN (16)
+
 int image_init(image *img, jpeg_header *header) {
   int hmax;
   int vmax;
@@ -31,7 +33,7 @@ int image_init(image *img, jpeg_header *header) {
     plane->ystride = plane->xstride*plane->width;
     plane->xdec = OD_ILOG(hmax) - OD_ILOG(comp->hsamp);
     plane->ydec = OD_ILOG(vmax) - OD_ILOG(comp->vsamp);
-    plane->data = malloc(plane->ystride*plane->height);
+    plane->data = od_aligned_malloc(plane->ystride*plane->height, IMAGE_ALIGN);
     if (plane->data == NULL) {
       image_clear(img);
       return EXIT_FAILURE;
@@ -43,7 +45,7 @@ int image_init(image *img, jpeg_header *header) {
 void image_clear(image *img) {
   int i;
   for (i = 0; i < img->nplanes; i++) {
-    free(img->plane[i].data);
+    od_aligned_free(img->plane[i].data);
   }
   memset(img, 0, sizeof(image));
 }

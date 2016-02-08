@@ -13,4 +13,7 @@ int od_ilog(unsigned int _v);
 #define OD_CLAMP255(x) \
  ((unsigned char)((((x) < 0) - 1) & ((x) | -((x) > 255))))
 
+void *od_aligned_malloc(size_t _sz,size_t _align);
+void od_aligned_free(void *_ptr);
+
 #endif

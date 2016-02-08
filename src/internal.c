@@ -1,4 +1,32 @@
+#include <stdlib.h>
+#include <limits.h>
 #include "internal.h"
+
+void *od_aligned_malloc(size_t _sz,size_t _align) {
+  unsigned char *p;
+  if (_align - 1 > UCHAR_MAX || (_align & (_align - 1))
+   || _sz > ~(size_t)0 - _align) {
+    return NULL;
+  }
+  p = (unsigned char *)malloc(_sz + _align);
+  if (p != NULL) {
+    int offs;
+    offs = ((p - (unsigned char *)0) - 1) & (_align - 1);
+    p[offs] = offs;
+    p += offs + 1;
+  }
+  return p;
+}
+
+void od_aligned_free(void *_ptr) {
+  unsigned char *p;
+  p = (unsigned char *)_ptr;
+  if (p != NULL) {
+    int offs;
+    offs = *--p;
+    free(p - offs);
+  }
+}
 
 int od_ilog(unsigned int _v) {
   /*On a Pentium M, this branchless version tested as the fastest on
