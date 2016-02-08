@@ -212,7 +212,10 @@ int main(int argc, char *argv[]) {
     jpeg_header header;
     dec = (*vtbl.decode_alloc)(&info);
     (*vtbl.decode_header)(dec, &header);
-    image_init(&img, &header);
+    if (image_init(&img, &header) != EXIT_SUCCESS) {
+      fprintf(stderr, "Error initializing image\n");
+      return EXIT_FAILURE;
+    }
     (*vtbl.decode_free)(dec);
   }
 
