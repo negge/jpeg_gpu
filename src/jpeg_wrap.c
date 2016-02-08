@@ -122,6 +122,22 @@ static int libjpeg_decode_image(libjpeg_decode_ctx *ctx, image *img,
       jpeg_finish_decompress(&ctx->cinfo);
       break;
     }
+    case JPEG_DECODE_RGB : {
+      JSAMPROW row_pointer[1];
+
+      ctx->cinfo.do_fancy_upsampling = FALSE;
+      ctx->cinfo.dct_method = JDCT_IFAST;
+
+      jpeg_start_decompress(&ctx->cinfo);
+
+      row_pointer[0] = img->pixels;
+      while (ctx->cinfo.output_scanline < ctx->cinfo.output_height) {
+        jpeg_read_scanlines(&ctx->cinfo, row_pointer, 1);
+        row_pointer[0] += img->width*3;
+      }
+      jpeg_finish_decompress(&ctx->cinfo);
+      break;
+    }
     default : {
       fprintf(stderr, "Unsupported output %i for libjpeg wrapper.", out);
       return EXIT_FAILURE;

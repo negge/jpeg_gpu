@@ -38,6 +38,17 @@ void main() {\n\
   color=vec4(r/255.0,g/255.0,b/255.0,1.0);\n\
 }";
 
+static const char RGB_FRAG[]="\
+#version 140\n\
+in vec2 out_tex;\n\
+out vec4 color;\n\
+uniform usampler2D rgb_tex;\n\
+void main() {\n\
+  int s=int(out_tex.s);\n\
+  int t=int(out_tex.t);\n\
+  color=vec4(texelFetch(rgb_tex,ivec2(s,t),0).rgb/255.0,1.0);\n\
+}";
+
 typedef struct vertex vertex;
 
 struct vertex {
@@ -152,6 +163,7 @@ static void usage() {
 
 int main(int argc, char *argv[]) {
   jpeg_decode_ctx_vtbl vtbl;
+  jpeg_decode_out out;
   int no_cpu;
   int no_gpu;
   jpeg_info info;
@@ -159,6 +171,7 @@ int main(int argc, char *argv[]) {
   no_cpu = 0;
   no_gpu = 0;
   vtbl = XJPEG_DECODE_CTX_VTBL;
+  out = JPEG_DECODE_YUV;
   {
     int c;
     int loi;
@@ -263,38 +276,63 @@ int main(int argc, char *argv[]) {
 
     glViewport(0, 0, img.width, img.height);
 
-    glGenTextures(img.nplanes, tex);
-    for (i = 0; i < img.nplanes; i++) {
-      image_plane *plane;
-      plane = &img.plane[i];
-      printf("Texture %i: %i\n", i, tex[i]);
-      glActiveTexture(GL_TEXTURE0 + i);
-      glBindTexture(GL_TEXTURE_2D, tex[i]);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, plane->width, plane->height, 0,
-       GL_RED_INTEGER, GL_UNSIGNED_BYTE, plane->data);
-    }
+    switch (out) {
+      case JPEG_DECODE_YUV : {
+        glGenTextures(img.nplanes, tex);
+        for (i = 0; i < img.nplanes; i++) {
+          image_plane *plane;
+          plane = &img.plane[i];
+          printf("Texture %i: %i\n", i, tex[i]);
+          glActiveTexture(GL_TEXTURE0 + i);
+          glBindTexture(GL_TEXTURE_2D, tex[i]);
+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+          glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, plane->width, plane->height,
+           0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, plane->data);
+        }
 
-    switch (img.nplanes) {
-      case 1 : {
-        /* TODO handle grey scale jpegs */
+        switch (img.nplanes) {
+          case 1 : {
+            /* TODO handle grey scale jpegs */
+            break;
+          }
+          case 3 : {
+            if (!setup_shader(&prog, YUV_VERT, YUV_FRAG)) {
+              return EXIT_FAILURE;
+            }
+            if (!bind_texture(prog, "y_tex", 0)) {
+              return EXIT_FAILURE;
+            }
+            if (!bind_texture(prog, "u_tex", 1)) {
+              return EXIT_FAILURE;
+            }
+            if (!bind_texture(prog, "v_tex", 2)) {
+              return EXIT_FAILURE;
+            }
+            break;
+          }
+        }
         break;
       }
-      case 3 : {
-        if (!setup_shader(&prog, YUV_VERT, YUV_FRAG)) {
+      case JPEG_DECODE_RGB : {
+        glGenTextures(1, tex);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, tex[0]);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8UI, img.width, img.height,
+         0, GL_RGB_INTEGER, GL_UNSIGNED_BYTE, img.pixels);
+        if (!setup_shader(&prog, YUV_VERT, RGB_FRAG)) {
           return EXIT_FAILURE;
         }
-        if (!bind_texture(prog, "y_tex", 0)) {
-          return EXIT_FAILURE;
-        }
-        if (!bind_texture(prog, "u_tex", 1)) {
-          return EXIT_FAILURE;
-        }
-        if (!bind_texture(prog, "v_tex", 2)) {
+        if (!bind_texture(prog, "rgb_tex", 0)) {
           return EXIT_FAILURE;
         }
         break;
+      }
+      default : {
+        fprintf(stderr, "Unsupported output %i\n", out);
+        return EXIT_FAILURE;
       }
     }
 
@@ -347,6 +385,7 @@ int main(int argc, char *argv[]) {
     first = 0;
     last = glfwGetTime();
     frames = 0;
+    /* TODO Compute this based on out */
     pixels = 0;
     for (i = 0; i < img.nplanes; i++) {
       image_plane *plane;
@@ -362,7 +401,7 @@ int main(int argc, char *argv[]) {
 
         (*vtbl.decode_reset)(dec, &info);
         (*vtbl.decode_header)(dec, &header);
-        if ((*vtbl.decode_image)(dec, &img, JPEG_DECODE_YUV) != EXIT_SUCCESS) {
+        if ((*vtbl.decode_image)(dec, &img, out) != EXIT_SUCCESS) {
          break;
         }
       }
@@ -385,13 +424,29 @@ int main(int argc, char *argv[]) {
       }
 
       if (!no_gpu) {
-        for (i = 0; i < img.nplanes; i++) {
-          image_plane *plane;
-          plane = &img.plane[i];
-          glActiveTexture(GL_TEXTURE0+i);
-          glBindTexture(GL_TEXTURE_2D, tex[i]);
-          glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, plane->width, plane->height,
-           0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, plane->data);
+        switch (out) {
+          case JPEG_DECODE_YUV : {
+            for (i = 0; i < img.nplanes; i++) {
+              image_plane *plane;
+              plane = &img.plane[i];
+              glActiveTexture(GL_TEXTURE0+i);
+              glBindTexture(GL_TEXTURE_2D, tex[i]);
+              glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, plane->width, plane->height,
+               0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, plane->data);
+            }
+            break;
+          }
+          case JPEG_DECODE_RGB : {
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, tex[0]);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8UI, img.width, img.height,
+             0, GL_RGB_INTEGER, GL_UNSIGNED_BYTE, img.pixels);
+            break;
+          }
+          default : {
+            fprintf(stderr, "Unsupported output %i\n", out);
+            return EXIT_FAILURE;
+          }
         }
 
         glClear(GL_COLOR_BUFFER_BIT);

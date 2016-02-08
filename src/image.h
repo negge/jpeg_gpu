@@ -26,6 +26,7 @@ struct image {
   unsigned short height;
   int nplanes;
   image_plane plane[NPLANES_MAX];
+  unsigned char *pixels;
 };
 
 int image_init(image *img, jpeg_header *header);
