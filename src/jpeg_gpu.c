@@ -156,8 +156,8 @@ static void usage() {
    "     --no-cpu                    Disable CPU decoding in main loop.\n"
    "     --no-gpu                    Disable GPU decoding in main loop.\n"
    "  -i --impl <decoder>            Software decoder to use.\n"
-   "                                 libjpeg => platform libjpeg\n"
-   "                                 xjpeg (default) => project decoder\n\n"
+   "                                 libjpeg (default) => platform libjpeg\n"
+   "                                 xjpeg => project decoder\n\n"
    " %s accepts only 8-bit non-hierarchical JPEG files.\n\n", NAME, NAME);
 }
 
@@ -170,7 +170,7 @@ int main(int argc, char *argv[]) {
   image img;
   no_cpu = 0;
   no_gpu = 0;
-  vtbl = XJPEG_DECODE_CTX_VTBL;
+  vtbl = LIBJPEG_DECODE_CTX_VTBL;
   out = JPEG_DECODE_YUV;
   {
     int c;
