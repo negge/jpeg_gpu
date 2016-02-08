@@ -127,12 +127,13 @@ static GLint bind_texture(GLuint prog,const char *name, int tex) {
   return GL_TRUE;
 }
 
-static const char *OPTSTRING = "h";
+static const char *OPTSTRING = "hi:";
 
 static const struct option OPTIONS[] = {
   { "help", no_argument, NULL, 'h' },
   { "no-cpu", no_argument, NULL, 0 },
   { "no-gpu", no_argument, NULL, 0 },
+  { "impl", required_argument, NULL, 'i' },
   { NULL, 0, NULL, 0 }
 };
 
@@ -143,6 +144,9 @@ static void usage() {
    "  -h --help                      Display this help and exit.\n"
    "     --no-cpu                    Disable CPU decoding in main loop.\n"
    "     --no-gpu                    Disable GPU decoding in main loop.\n"
+   "  -i --impl <decoder>            Software decoder to use.\n"
+   "                                 libjpeg => platform libjpeg\n"
+   "                                 xjpeg (default) => project decoder\n\n"
    " %s accepts only 8-bit non-hierarchical JPEG files.\n\n", NAME, NAME);
 }
 
@@ -166,6 +170,20 @@ int main(int argc, char *argv[]) {
           }
           else if (strcmp(OPTIONS[loi].name, "no-gpu") == 0) {
             no_gpu = 1;
+          }
+          break;
+        }
+        case 'i' : {
+          if (strcmp("libjpeg", optarg) == 0) {
+            vtbl = LIBJPEG_DECODE_CTX_VTBL;
+          }
+          else if (strcmp("xjpeg", optarg) == 0) {
+            vtbl = XJPEG_DECODE_CTX_VTBL;
+          }
+          else {
+            fprintf(stderr, "Invalid decoder implementation: %s\n", optarg);
+            usage();
+            return EXIT_FAILURE;
           }
           break;
         }
@@ -198,10 +216,7 @@ int main(int argc, char *argv[]) {
     (*vtbl.decode_free)(dec);
   }
 
-  vtbl = LIBJPEG_DECODE_CTX_VTBL;
-
-  /* Open a glfw context and run the entire libjpeg decoder inside the
-      main loop.
+  /* Open a glfw context and run the entire jpeg decoder inside the main loop.
      We decode only as far as the 8-bit YUV values and then upload these as
       textures to the GPU for the color conversion step.
      This should only upload half as much data as an RGB texture for 4:2:0
