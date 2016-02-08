@@ -7,7 +7,7 @@
 #include <GLFW/glfw3.h>
 #include "jpeg_wrap.h"
 
-#define NAME "test_libjpeg"
+#define NAME "jpeg_gpu"
 
 static const char YUV_VERT[]="\
 #version 140\n\
