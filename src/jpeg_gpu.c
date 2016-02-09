@@ -140,14 +140,14 @@ static GLint setup_shader(GLuint *_prog,const char *_vert,const char *_frag) {
   return GL_TRUE;
 }
 
-static GLint bind_texture(GLuint prog,const char *name, int tex) {
+static GLint bind_int1(GLuint prog,const char *name, int val) {
   GLint loc;
   loc = glGetUniformLocation(prog, name);
   if (loc < 0) {
-    printf("Error finding texture '%s' in program %i\n", name, prog);
+    printf("Error finding uniform '%s' in program %i\n", name, prog);
     return GL_FALSE;
   }
-  glUniform1i(loc, tex);
+  glUniform1i(loc, val);
   return GL_TRUE;
 }
 
@@ -327,7 +327,7 @@ int main(int argc, char *argv[]) {
             if (!setup_shader(&prog, TEX_VERT, GREY_FRAG)) {
               return EXIT_FAILURE;
             }
-            if (!bind_texture(prog, "grey_tex", 0)) {
+            if (!bind_int1(prog, "grey_tex", 0)) {
               return EXIT_FAILURE;
             }
             break;
@@ -336,13 +336,13 @@ int main(int argc, char *argv[]) {
             if (!setup_shader(&prog, TEX_VERT, YUV_FRAG)) {
               return EXIT_FAILURE;
             }
-            if (!bind_texture(prog, "y_tex", 0)) {
+            if (!bind_int1(prog, "y_tex", 0)) {
               return EXIT_FAILURE;
             }
-            if (!bind_texture(prog, "u_tex", 1)) {
+            if (!bind_int1(prog, "u_tex", 1)) {
               return EXIT_FAILURE;
             }
-            if (!bind_texture(prog, "v_tex", 2)) {
+            if (!bind_int1(prog, "v_tex", 2)) {
               return EXIT_FAILURE;
             }
             break;
@@ -363,7 +363,7 @@ int main(int argc, char *argv[]) {
             if (!setup_shader(&prog, TEX_VERT, GREY_FRAG)) {
               return EXIT_FAILURE;
             }
-            if (!bind_texture(prog, "grey_tex", 0)) {
+            if (!bind_int1(prog, "grey_tex", 0)) {
               return EXIT_FAILURE;
             }
             break;
@@ -374,7 +374,7 @@ int main(int argc, char *argv[]) {
             if (!setup_shader(&prog, TEX_VERT, RGB_FRAG)) {
               return EXIT_FAILURE;
             }
-            if (!bind_texture(prog, "rgb_tex", 0)) {
+            if (!bind_int1(prog, "rgb_tex", 0)) {
               return EXIT_FAILURE;
             }
             break;
