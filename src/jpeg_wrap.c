@@ -133,7 +133,8 @@ static int libjpeg_decode_image(libjpeg_decode_ctx *ctx, image *img,
       row_pointer[0] = img->pixels;
       while (ctx->cinfo.output_scanline < ctx->cinfo.output_height) {
         jpeg_read_scanlines(&ctx->cinfo, row_pointer, 1);
-        row_pointer[0] += img->width*3;
+        /* TODO add support for 16-bit output later */
+        row_pointer[0] += img->width*img->nplanes;
       }
       jpeg_finish_decompress(&ctx->cinfo);
       break;

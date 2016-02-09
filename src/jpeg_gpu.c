@@ -49,6 +49,18 @@ void main() {\n\
   color=vec4(texelFetch(rgb_tex,ivec2(s,t),0).rgb/255.0,1.0);\n\
 }";
 
+static const char GREY_FRAG[]="\
+#version 140\n\
+in vec2 out_tex;\n\
+out vec4 color;\n\
+uniform usampler2D grey_tex;\n\
+void main() {\n\
+  int s=int(out_tex.s);\n\
+  int t=int(out_tex.t);\n\
+  float y=float(texelFetch(grey_tex,ivec2(s,t),0).r);\n\
+  color=vec4(y/255.0,y/255.0,y/255.0,1.0);\n\
+}";
+
 typedef struct vertex vertex;
 
 struct vertex {
@@ -309,10 +321,14 @@ int main(int argc, char *argv[]) {
           glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, plane->width, plane->height,
            0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, plane->data);
         }
-
         switch (img.nplanes) {
           case 1 : {
-            /* TODO handle grey scale jpegs */
+            if (!setup_shader(&prog, TEX_VERT, GREY_FRAG)) {
+              return EXIT_FAILURE;
+            }
+            if (!bind_texture(prog, "grey_tex", 0)) {
+              return EXIT_FAILURE;
+            }
             break;
           }
           case 3 : {
@@ -339,13 +355,29 @@ int main(int argc, char *argv[]) {
         glBindTexture(GL_TEXTURE_2D, tex[0]);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8UI, img.width, img.height,
-         0, GL_RGB_INTEGER, GL_UNSIGNED_BYTE, img.pixels);
-        if (!setup_shader(&prog, TEX_VERT, RGB_FRAG)) {
-          return EXIT_FAILURE;
-        }
-        if (!bind_texture(prog, "rgb_tex", 0)) {
-          return EXIT_FAILURE;
+        switch (img.nplanes) {
+          case 1 : {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, img.width, img.height,
+             0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, img.pixels);
+            if (!setup_shader(&prog, TEX_VERT, GREY_FRAG)) {
+              return EXIT_FAILURE;
+            }
+            if (!bind_texture(prog, "grey_tex", 0)) {
+              return EXIT_FAILURE;
+            }
+            break;
+          }
+          case 3 : {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8UI, img.width, img.height,
+             0, GL_RGB_INTEGER, GL_UNSIGNED_BYTE, img.pixels);
+            if (!setup_shader(&prog, TEX_VERT, RGB_FRAG)) {
+              return EXIT_FAILURE;
+            }
+            if (!bind_texture(prog, "rgb_tex", 0)) {
+              return EXIT_FAILURE;
+            }
+            break;
+          }
         }
         break;
       }
@@ -458,8 +490,18 @@ int main(int argc, char *argv[]) {
           case JPEG_DECODE_RGB : {
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, tex[0]);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8UI, img.width, img.height,
-             0, GL_RGB_INTEGER, GL_UNSIGNED_BYTE, img.pixels);
+            switch (img.nplanes) {
+              case 1 : {
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, img.width, img.height,
+                 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, img.pixels);
+                break;
+              }
+              case 3 : {
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8UI, img.width, img.height,
+                 0, GL_RGB_INTEGER, GL_UNSIGNED_BYTE, img.pixels);
+                break;
+              }
+            }
             break;
           }
           default : {
