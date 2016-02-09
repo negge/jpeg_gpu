@@ -157,7 +157,9 @@ static GLint bind_int1(GLuint prog,const char *name, int val) {
 
 typedef enum texture_format {
   U8_1,
-  U8_3
+  U8_3,
+  I16_1,
+  I16_4
 } texture_format;
 
 static GLint create_texture(GLuint *tex, int id, int width, int height,
@@ -177,6 +179,18 @@ static GLint create_texture(GLuint *tex, int id, int width, int height,
       internal = GL_RGB8UI;
       format = GL_RGB_INTEGER;
       type = GL_UNSIGNED_BYTE;
+      break;
+    }
+    case I16_1 : {
+      internal = GL_R16I;
+      format = GL_RED_INTEGER;
+      type = GL_SHORT;
+      break;
+    }
+    case I16_4 : {
+      internal = GL_RGBA16I;
+      format = GL_RGBA_INTEGER;
+      type = GL_SHORT;
       break;
     }
     default : {
@@ -206,6 +220,16 @@ static void update_texture(GLuint tex, int id, int width, int height,
     case U8_3 : {
       format = GL_RGB_INTEGER;
       type = GL_UNSIGNED_BYTE;
+      break;
+    }
+    case I16_1 : {
+      format = GL_RED_INTEGER;
+      type = GL_SHORT;
+      break;
+    }
+    case I16_4 : {
+      format = GL_RGBA_INTEGER;
+      type = GL_SHORT;
       break;
     }
   }
