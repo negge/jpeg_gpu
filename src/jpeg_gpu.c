@@ -3,6 +3,7 @@
 #include <string.h>
 #include <jpeglib.h>
 #include <getopt.h>
+#define GLFW_INCLUDE_GLCOREARB
 #define GL_GLEXT_PROTOTYPES
 #include <GLFW/glfw3.h>
 #include "jpeg_wrap.h"
