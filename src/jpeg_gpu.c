@@ -265,7 +265,7 @@ static GLint create_tex_rect(GLuint *vao, GLuint *vbo, GLuint prog, int width,
   return GL_TRUE;
 }
 
-static const char *OPTSTRING = "hi:o:";
+static const char *OPTSTRING = "hi:o:d";
 
 static const struct option OPTIONS[] = {
   { "help", no_argument, NULL, 'h' },
@@ -273,6 +273,7 @@ static const struct option OPTIONS[] = {
   { "no-gpu", no_argument, NULL, 0 },
   { "impl", required_argument, NULL, 'i' },
   { "out", required_argument, NULL, 'o' },
+  { "dump", no_argument, NULL, 'd' },
   { NULL, 0, NULL, 0 }
 };
 
@@ -289,7 +290,8 @@ static void usage() {
    "  -o --out <format>              Format software decoder should output\n"
    "                                  and send to the GPU for display.\n"
    "                                 yuv (default) => YUV (4:4:4 or 4:2:0)\n"
-   "                                 rgb => RGB (4:4:4)\n\n"
+   "                                 rgb => RGB (4:4:4)\n"
+   "  -d --dump                      Dump jpeg data in the output format.\n\n"
    " %s accepts only 8-bit non-hierarchical JPEG files.\n\n", NAME, NAME);
 }
 
@@ -298,10 +300,12 @@ int main(int argc, char *argv[]) {
   jpeg_decode_out out;
   int no_cpu;
   int no_gpu;
+  int dump;
   jpeg_info info;
   image img;
   no_cpu = 0;
   no_gpu = 0;
+  dump = 0;
   vtbl = LIBJPEG_DECODE_CTX_VTBL;
   out = JPEG_DECODE_YUV;
   {
@@ -315,6 +319,9 @@ int main(int argc, char *argv[]) {
           }
           else if (strcmp(OPTIONS[loi].name, "no-gpu") == 0) {
             no_gpu = 1;
+          }
+          else if (strcmp(OPTIONS[loi].name, "dump") == 0) {
+            dump = 1;
           }
           break;
         }
@@ -346,6 +353,10 @@ int main(int argc, char *argv[]) {
           }
           break;
         }
+        case 'd' : {
+          dump = 1;
+          break;
+        }
         case 'h' :
         default : {
           usage();
@@ -375,6 +386,23 @@ int main(int argc, char *argv[]) {
       fprintf(stderr, "Error initializing image\n");
       return EXIT_FAILURE;
     }
+    if (dump) {
+      int i, j, k;
+      (*vtbl.decode_image)(dec, &img, JPEG_DECODE_YUV);
+      for (i = 0; i < img.nplanes; i++) {
+        image_plane *plane;
+        plane = &img.plane[i];
+        printf("Plane %i\n", i);
+        for (k = 0; k < plane->height; k++) {
+          for (j = 0; j < plane->width; j++) {
+            printf("%i ", plane->data[k*plane->width + j]);
+          }
+          printf("\n");
+        }
+        printf("\n");
+      }
+      return EXIT_SUCCESS;
+    }
     (*vtbl.decode_free)(dec);
   }
 
@@ -393,7 +421,6 @@ int main(int argc, char *argv[]) {
     double last;
     int frames;
     int i;
-    int first;
     int pixels;
 
     glfwSetErrorCallback(error_callback);
@@ -519,7 +546,6 @@ int main(int argc, char *argv[]) {
 
     dec = (*vtbl.decode_alloc)(&info);
 
-    first = 0;
     last = glfwGetTime();
     frames = 0;
     /* TODO Compute this based on out */
@@ -541,23 +567,6 @@ int main(int argc, char *argv[]) {
         if ((*vtbl.decode_image)(dec, &img, out) != EXIT_SUCCESS) {
          break;
         }
-      }
-
-      if (first) {
-        for (i = 0; i < img.nplanes; i++) {
-          image_plane *plane;
-          int j, k;
-          plane = &img.plane[i];
-          printf("plane %i\n", i);
-          for (k = 0; k < plane->height; k++) {
-            for (j = 0; j < plane->width; j++) {
-              printf("%i ", plane->data[k*plane->width + j]);
-            }
-            printf("\n");
-          }
-          printf("\n");
-        }
-        first = 0;
       }
 
       if (!no_gpu) {
