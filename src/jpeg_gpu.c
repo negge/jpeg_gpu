@@ -24,6 +24,10 @@ static const char YUV_FRAG[]="\
 #version 140\n\
 in vec2 tex_coord;\n\
 out vec3 color;\n\
+uniform int u_xdec;\n\
+uniform int u_ydec;\n\
+uniform int v_xdec;\n\
+uniform int v_ydec;\n\
 uniform usampler2D y_tex;\n\
 uniform usampler2D u_tex;\n\
 uniform usampler2D v_tex;\n\
@@ -31,8 +35,8 @@ void main() {\n\
   int s=int(tex_coord.s);\n\
   int t=int(tex_coord.t);\n\
   float y=float(texelFetch(y_tex,ivec2(s,t),0).r);\n\
-  float u=float(texelFetch(u_tex,ivec2(s>>1,t>>1),0).r);\n\
-  float v=float(texelFetch(v_tex,ivec2(s>>1,t>>1),0).r);\n\
+  float u=float(texelFetch(u_tex,ivec2(s>>u_xdec,t>>u_ydec),0).r);\n\
+  float v=float(texelFetch(v_tex,ivec2(s>>v_xdec,t>>v_ydec),0).r);\n\
   float r=y+1.402*(v-128);\n\
   float g=y-0.34414*(u-128)-0.71414*(v-128);\n\
   float b=y+1.772*(u-128);\n\
@@ -342,7 +346,19 @@ int main(int argc, char *argv[]) {
             if (!bind_int1(prog, "u_tex", 1)) {
               return EXIT_FAILURE;
             }
+            if (!bind_int1(prog, "u_xdec", img.plane[1].xdec)) {
+              return EXIT_FAILURE;
+            }
+            if (!bind_int1(prog, "u_ydec", img.plane[1].ydec)) {
+              return EXIT_FAILURE;
+            }
             if (!bind_int1(prog, "v_tex", 2)) {
+              return EXIT_FAILURE;
+            }
+            if (!bind_int1(prog, "v_xdec", img.plane[2].xdec)) {
+              return EXIT_FAILURE;
+            }
+            if (!bind_int1(prog, "v_ydec", img.plane[2].ydec)) {
               return EXIT_FAILURE;
             }
             break;
