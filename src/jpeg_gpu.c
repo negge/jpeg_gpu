@@ -155,6 +155,65 @@ static GLint bind_int1(GLuint prog,const char *name, int val) {
   return GL_TRUE;
 }
 
+typedef enum texture_format {
+  U8,
+  U8U8U8
+} texture_format;
+
+static GLint create_texture(GLuint *tex, int id, int width, int height,
+ texture_format fmt) {
+  GLint internal;
+  GLenum format;
+  GLenum type;
+  /* TODO replace with some tables indexed by int_texture_fmt enum */
+  switch (fmt) {
+    case U8 : {
+      internal = GL_R8UI;
+      format = GL_RED_INTEGER;
+      type = GL_UNSIGNED_BYTE;
+      break;
+    }
+    case U8U8U8 : {
+      internal = GL_RGB8UI;
+      format = GL_RGB_INTEGER;
+      type = GL_UNSIGNED_BYTE;
+      break;
+    }
+    default : {
+      return GL_FALSE;
+    }
+  }
+  glGenTextures(1, tex);
+  glActiveTexture(GL_TEXTURE0 + id);
+  glBindTexture(GL_TEXTURE_2D, *tex);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexImage2D(GL_TEXTURE_2D, 0, internal, width, height, 0, format, type,
+   NULL);
+  return GL_TRUE;
+}
+
+static void update_texture(GLuint tex, int id, int width, int height,
+ texture_format fmt, GLvoid *data) {
+  GLenum format;
+  GLenum type;
+  switch (fmt) {
+    case U8 : {
+      format = GL_RED_INTEGER;
+      type = GL_UNSIGNED_BYTE;
+      break;
+    }
+    case U8U8U8 : {
+      format = GL_RGB_INTEGER;
+      type = GL_UNSIGNED_BYTE;
+      break;
+    }
+  }
+  glActiveTexture(GL_TEXTURE0 + id);
+  glBindTexture(GL_TEXTURE_2D, tex);
+  glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, format, type, data);
+}
+
 /* This program creates a VBO / VAO and binds the texture coodinates for a
     shader program that assumes the TEX_VERT vertex shader. */
 static GLint create_tex_rect(GLuint *vao, GLuint *vbo, GLuint prog, int width,
@@ -369,13 +428,9 @@ int main(int argc, char *argv[]) {
         for (i = 0; i < img.nplanes; i++) {
           image_plane *plane;
           plane = &img.plane[i];
-          printf("Texture %i: %i\n", i, tex[i]);
-          glActiveTexture(GL_TEXTURE0 + i);
-          glBindTexture(GL_TEXTURE_2D, tex[i]);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-          glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, plane->width, plane->height,
-           0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, NULL);
+          if (!create_texture(&tex[i], i, plane->width, plane->height, U8)) {
+            return EXIT_FAILURE;
+          }
         }
         switch (img.nplanes) {
           case 1 : {
@@ -422,15 +477,11 @@ int main(int argc, char *argv[]) {
         break;
       }
       case JPEG_DECODE_RGB : {
-        glGenTextures(1, tex);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, tex[0]);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         switch (img.nplanes) {
           case 1 : {
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, img.width, img.height,
-             0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, NULL);
+            if (!create_texture(tex, 0, img.width, img.height, U8)) {
+              return EXIT_FAILURE;
+            }
             if (!setup_shader(&prog, TEX_VERT, GREY_FRAG)) {
               return EXIT_FAILURE;
             }
@@ -440,8 +491,9 @@ int main(int argc, char *argv[]) {
             break;
           }
           case 3 : {
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8UI, img.width, img.height,
-             0, GL_RGB_INTEGER, GL_UNSIGNED_BYTE, NULL);
+            if (!create_texture(tex, 0, img.width, img.height, U8U8U8)) {
+              return EXIT_FAILURE;
+            }
             if (!setup_shader(&prog, TEX_VERT, RGB_FRAG)) {
               return EXIT_FAILURE;
             }
@@ -514,25 +566,20 @@ int main(int argc, char *argv[]) {
             for (i = 0; i < img.nplanes; i++) {
               image_plane *pl;
               pl = &img.plane[i];
-              glActiveTexture(GL_TEXTURE0+i);
-              glBindTexture(GL_TEXTURE_2D, tex[i]);
-              glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, pl->width, pl->height,
-               GL_RED_INTEGER, GL_UNSIGNED_BYTE, pl->data);
+              update_texture(tex[i], i, pl->width, pl->height, U8, pl->data);
             }
             break;
           }
           case JPEG_DECODE_RGB : {
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, tex[0]);
             switch (img.nplanes) {
               case 1 : {
-                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, img.width, img.height,
-                 GL_RED_INTEGER, GL_UNSIGNED_BYTE, img.pixels);
+                update_texture(tex[0], 0, img.width, img.height, U8,
+                 img.pixels);
                 break;
               }
               case 3 : {
-                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, img.width, img.height,
-                 GL_RGB_INTEGER, GL_UNSIGNED_BYTE, img.pixels);
+                update_texture(tex[0], 0, img.width, img.height, U8U8U8,
+                 img.pixels);
                 break;
               }
             }
