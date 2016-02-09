@@ -375,7 +375,7 @@ int main(int argc, char *argv[]) {
           glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
           glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
           glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, plane->width, plane->height,
-           0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, plane->data);
+           0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, NULL);
         }
         switch (img.nplanes) {
           case 1 : {
@@ -426,7 +426,7 @@ int main(int argc, char *argv[]) {
         switch (img.nplanes) {
           case 1 : {
             glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, img.width, img.height,
-             0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, img.pixels);
+             0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, NULL);
             if (!setup_shader(&prog, TEX_VERT, GREY_FRAG)) {
               return EXIT_FAILURE;
             }
@@ -437,7 +437,7 @@ int main(int argc, char *argv[]) {
           }
           case 3 : {
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8UI, img.width, img.height,
-             0, GL_RGB_INTEGER, GL_UNSIGNED_BYTE, img.pixels);
+             0, GL_RGB_INTEGER, GL_UNSIGNED_BYTE, NULL);
             if (!setup_shader(&prog, TEX_VERT, RGB_FRAG)) {
               return EXIT_FAILURE;
             }
@@ -508,12 +508,12 @@ int main(int argc, char *argv[]) {
         switch (out) {
           case JPEG_DECODE_YUV : {
             for (i = 0; i < img.nplanes; i++) {
-              image_plane *plane;
-              plane = &img.plane[i];
+              image_plane *pl;
+              pl = &img.plane[i];
               glActiveTexture(GL_TEXTURE0+i);
               glBindTexture(GL_TEXTURE_2D, tex[i]);
-              glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, plane->width, plane->height,
-               0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, plane->data);
+              glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, pl->width, pl->height,
+               GL_RED_INTEGER, GL_UNSIGNED_BYTE, pl->data);
             }
             break;
           }
@@ -522,13 +522,13 @@ int main(int argc, char *argv[]) {
             glBindTexture(GL_TEXTURE_2D, tex[0]);
             switch (img.nplanes) {
               case 1 : {
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, img.width, img.height,
-                 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, img.pixels);
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, img.width, img.height,
+                 GL_RED_INTEGER, GL_UNSIGNED_BYTE, img.pixels);
                 break;
               }
               case 3 : {
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8UI, img.width, img.height,
-                 0, GL_RGB_INTEGER, GL_UNSIGNED_BYTE, img.pixels);
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, img.width, img.height,
+                 GL_RGB_INTEGER, GL_UNSIGNED_BYTE, img.pixels);
                 break;
               }
             }
