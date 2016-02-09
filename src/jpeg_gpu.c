@@ -415,6 +415,10 @@ int main(int argc, char *argv[]) {
             break;
           }
         }
+        if (!create_tex_rect(&vao, &vbo, prog, img.width, img.height)) {
+          return EXIT_FAILURE;
+        }
+        glBindFragDataLocation(prog, 0, "color");
         break;
       }
       case JPEG_DECODE_RGB : {
@@ -447,6 +451,10 @@ int main(int argc, char *argv[]) {
             break;
           }
         }
+        if (!create_tex_rect(&vao, &vbo, prog, img.width, img.height)) {
+          return EXIT_FAILURE;
+        }
+        glBindFragDataLocation(prog, 0, "color");
         break;
       }
       default : {
@@ -455,12 +463,6 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    /* Create the vertex buffer object */
-    if (!create_tex_rect(&vao, &vbo, prog, img.width, img.height)) {
-      return EXIT_FAILURE;
-    }
-
-    glBindFragDataLocation(prog, 0, "color");
     glUseProgram(prog);
 
     dec = (*vtbl.decode_alloc)(&info);
