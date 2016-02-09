@@ -456,7 +456,9 @@ int main(int argc, char *argv[]) {
     }
 
     /* Create the vertex buffer object */
-    create_tex_rect(&vao, &vbo, prog, img.width, img.height);
+    if (!create_tex_rect(&vao, &vbo, prog, img.width, img.height)) {
+      return EXIT_FAILURE;
+    }
 
     glBindFragDataLocation(prog, 0, "color");
     glUseProgram(prog);
