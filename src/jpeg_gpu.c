@@ -10,6 +10,8 @@
 
 #define NAME "jpeg_gpu"
 
+#define NPROGS_MAX (3)
+
 static const char TEX_VERT[]="\
 #version 140\n\
 in vec3 in_pos;\n\
@@ -439,9 +441,9 @@ int main(int argc, char *argv[]) {
     jpeg_decode_ctx *dec;
     GLFWwindow *window;
     GLuint tex[NPLANES_MAX];
-    GLuint prog;
-    GLuint vbo;
-    GLuint vao;
+    GLuint prog[NPROGS_MAX];
+    GLuint vbo[NPROGS_MAX];
+    GLuint vao[NPROGS_MAX];
     double last;
     int frames;
     int i;
@@ -485,46 +487,46 @@ int main(int argc, char *argv[]) {
         }
         switch (img.nplanes) {
           case 1 : {
-            if (!setup_shader(&prog, TEX_VERT, GREY_FRAG)) {
+            if (!setup_shader(&prog[0], TEX_VERT, GREY_FRAG)) {
               return EXIT_FAILURE;
             }
-            if (!bind_int1(prog, "grey_tex", 0)) {
+            if (!bind_int1(prog[0], "grey_tex", 0)) {
               return EXIT_FAILURE;
             }
             break;
           }
           case 3 : {
-            if (!setup_shader(&prog, TEX_VERT, YUV_FRAG)) {
+            if (!setup_shader(&prog[0], TEX_VERT, YUV_FRAG)) {
               return EXIT_FAILURE;
             }
-            if (!bind_int1(prog, "y_tex", 0)) {
+            if (!bind_int1(prog[0], "y_tex", 0)) {
               return EXIT_FAILURE;
             }
-            if (!bind_int1(prog, "u_tex", 1)) {
+            if (!bind_int1(prog[0], "u_tex", 1)) {
               return EXIT_FAILURE;
             }
-            if (!bind_int1(prog, "u_xdec", img.plane[1].xdec)) {
+            if (!bind_int1(prog[0], "u_xdec", img.plane[1].xdec)) {
               return EXIT_FAILURE;
             }
-            if (!bind_int1(prog, "u_ydec", img.plane[1].ydec)) {
+            if (!bind_int1(prog[0], "u_ydec", img.plane[1].ydec)) {
               return EXIT_FAILURE;
             }
-            if (!bind_int1(prog, "v_tex", 2)) {
+            if (!bind_int1(prog[0], "v_tex", 2)) {
               return EXIT_FAILURE;
             }
-            if (!bind_int1(prog, "v_xdec", img.plane[2].xdec)) {
+            if (!bind_int1(prog[0], "v_xdec", img.plane[2].xdec)) {
               return EXIT_FAILURE;
             }
-            if (!bind_int1(prog, "v_ydec", img.plane[2].ydec)) {
+            if (!bind_int1(prog[0], "v_ydec", img.plane[2].ydec)) {
               return EXIT_FAILURE;
             }
             break;
           }
         }
-        if (!create_tex_rect(&vao, &vbo, prog, img.width, img.height)) {
+        if (!create_tex_rect(vao, vbo, prog[0], img.width, img.height)) {
           return EXIT_FAILURE;
         }
-        glBindFragDataLocation(prog, 0, "color");
+        glBindFragDataLocation(prog[0], 0, "color");
         break;
       }
       case JPEG_DECODE_RGB : {
@@ -533,10 +535,10 @@ int main(int argc, char *argv[]) {
             if (!create_texture(tex, 0, img.width, img.height, U8_1)) {
               return EXIT_FAILURE;
             }
-            if (!setup_shader(&prog, TEX_VERT, GREY_FRAG)) {
+            if (!setup_shader(&prog[0], TEX_VERT, GREY_FRAG)) {
               return EXIT_FAILURE;
             }
-            if (!bind_int1(prog, "grey_tex", 0)) {
+            if (!bind_int1(prog[0], "grey_tex", 0)) {
               return EXIT_FAILURE;
             }
             break;
@@ -545,19 +547,19 @@ int main(int argc, char *argv[]) {
             if (!create_texture(tex, 0, img.width, img.height, U8_3)) {
               return EXIT_FAILURE;
             }
-            if (!setup_shader(&prog, TEX_VERT, RGB_FRAG)) {
+            if (!setup_shader(&prog[0], TEX_VERT, RGB_FRAG)) {
               return EXIT_FAILURE;
             }
-            if (!bind_int1(prog, "rgb_tex", 0)) {
+            if (!bind_int1(prog[0], "rgb_tex", 0)) {
               return EXIT_FAILURE;
             }
             break;
           }
         }
-        if (!create_tex_rect(&vao, &vbo, prog, img.width, img.height)) {
+        if (!create_tex_rect(vao, vbo, prog[0], img.width, img.height)) {
           return EXIT_FAILURE;
         }
-        glBindFragDataLocation(prog, 0, "color");
+        glBindFragDataLocation(prog[0], 0, "color");
         break;
       }
       default : {
@@ -566,7 +568,7 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    glUseProgram(prog);
+    glUseProgram(prog[0]);
 
     dec = (*vtbl.decode_alloc)(&info);
 
