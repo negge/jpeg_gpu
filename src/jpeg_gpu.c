@@ -13,22 +13,22 @@ static const char TEX_VERT[]="\
 #version 140\n\
 in vec3 in_pos;\n\
 in ivec2 in_tex;\n\
-out vec2 out_tex;\n\
+out vec2 tex_coord;\n\
 void main() {\n\
   gl_Position = vec4(in_pos.x, in_pos.y, in_pos.z, 1.0);\n\
-  out_tex = vec2(in_tex);\n\
+  tex_coord = vec2(in_tex);\n\
 }";
 
 static const char YUV_FRAG[]="\
 #version 140\n\
-in vec2 out_tex;\n\
+in vec2 tex_coord;\n\
 out vec3 color;\n\
 uniform usampler2D y_tex;\n\
 uniform usampler2D u_tex;\n\
 uniform usampler2D v_tex;\n\
 void main() {\n\
-  int s=int(out_tex.s);\n\
-  int t=int(out_tex.t);\n\
+  int s=int(tex_coord.s);\n\
+  int t=int(tex_coord.t);\n\
   float y=float(texelFetch(y_tex,ivec2(s,t),0).r);\n\
   float u=float(texelFetch(u_tex,ivec2(s>>1,t>>1),0).r);\n\
   float v=float(texelFetch(v_tex,ivec2(s>>1,t>>1),0).r);\n\
@@ -40,23 +40,23 @@ void main() {\n\
 
 static const char RGB_FRAG[]="\
 #version 140\n\
-in vec2 out_tex;\n\
+in vec2 tex_coord;\n\
 out vec3 color;\n\
 uniform usampler2D rgb_tex;\n\
 void main() {\n\
-  int s=int(out_tex.s);\n\
-  int t=int(out_tex.t);\n\
+  int s=int(tex_coord.s);\n\
+  int t=int(tex_coord.t);\n\
   color=vec3(texelFetch(rgb_tex,ivec2(s,t),0).rgb)/255.0;\n\
 }";
 
 static const char GREY_FRAG[]="\
 #version 140\n\
-in vec2 out_tex;\n\
+in vec2 tex_coord;\n\
 out vec3 color;\n\
 uniform usampler2D grey_tex;\n\
 void main() {\n\
-  int s=int(out_tex.s);\n\
-  int t=int(out_tex.t);\n\
+  int s=int(tex_coord.s);\n\
+  int t=int(tex_coord.t);\n\
   float y=float(texelFetch(grey_tex,ivec2(s,t),0).r)/255.0;\n\
   color=vec3(y,y,y);\n\
 }";
