@@ -156,8 +156,8 @@ static GLint bind_int1(GLuint prog,const char *name, int val) {
 }
 
 typedef enum texture_format {
-  U8,
-  U8U8U8
+  U8_1,
+  U8_3
 } texture_format;
 
 static GLint create_texture(GLuint *tex, int id, int width, int height,
@@ -167,13 +167,13 @@ static GLint create_texture(GLuint *tex, int id, int width, int height,
   GLenum type;
   /* TODO replace with some tables indexed by int_texture_fmt enum */
   switch (fmt) {
-    case U8 : {
+    case U8_1 : {
       internal = GL_R8UI;
       format = GL_RED_INTEGER;
       type = GL_UNSIGNED_BYTE;
       break;
     }
-    case U8U8U8 : {
+    case U8_3 : {
       internal = GL_RGB8UI;
       format = GL_RGB_INTEGER;
       type = GL_UNSIGNED_BYTE;
@@ -198,12 +198,12 @@ static void update_texture(GLuint tex, int id, int width, int height,
   GLenum format;
   GLenum type;
   switch (fmt) {
-    case U8 : {
+    case U8_1 : {
       format = GL_RED_INTEGER;
       type = GL_UNSIGNED_BYTE;
       break;
     }
-    case U8U8U8 : {
+    case U8_3 : {
       format = GL_RGB_INTEGER;
       type = GL_UNSIGNED_BYTE;
       break;
@@ -455,7 +455,7 @@ int main(int argc, char *argv[]) {
         for (i = 0; i < img.nplanes; i++) {
           image_plane *plane;
           plane = &img.plane[i];
-          if (!create_texture(&tex[i], i, plane->width, plane->height, U8)) {
+          if (!create_texture(&tex[i], i, plane->width, plane->height, U8_1)) {
             return EXIT_FAILURE;
           }
         }
@@ -506,7 +506,7 @@ int main(int argc, char *argv[]) {
       case JPEG_DECODE_RGB : {
         switch (img.nplanes) {
           case 1 : {
-            if (!create_texture(tex, 0, img.width, img.height, U8)) {
+            if (!create_texture(tex, 0, img.width, img.height, U8_1)) {
               return EXIT_FAILURE;
             }
             if (!setup_shader(&prog, TEX_VERT, GREY_FRAG)) {
@@ -518,7 +518,7 @@ int main(int argc, char *argv[]) {
             break;
           }
           case 3 : {
-            if (!create_texture(tex, 0, img.width, img.height, U8U8U8)) {
+            if (!create_texture(tex, 0, img.width, img.height, U8_3)) {
               return EXIT_FAILURE;
             }
             if (!setup_shader(&prog, TEX_VERT, RGB_FRAG)) {
@@ -575,19 +575,19 @@ int main(int argc, char *argv[]) {
             for (i = 0; i < img.nplanes; i++) {
               image_plane *pl;
               pl = &img.plane[i];
-              update_texture(tex[i], i, pl->width, pl->height, U8, pl->data);
+              update_texture(tex[i], i, pl->width, pl->height, U8_1, pl->data);
             }
             break;
           }
           case JPEG_DECODE_RGB : {
             switch (img.nplanes) {
               case 1 : {
-                update_texture(tex[0], 0, img.width, img.height, U8,
+                update_texture(tex[0], 0, img.width, img.height, U8_1,
                  img.pixels);
                 break;
               }
               case 3 : {
-                update_texture(tex[0], 0, img.width, img.height, U8U8U8,
+                update_texture(tex[0], 0, img.width, img.height, U8_3,
                  img.pixels);
                 break;
               }
