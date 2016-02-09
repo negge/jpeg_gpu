@@ -22,7 +22,7 @@ void main() {\n\
 static const char YUV_FRAG[]="\
 #version 140\n\
 in vec2 out_tex;\n\
-out vec4 color;\n\
+out vec3 color;\n\
 uniform usampler2D y_tex;\n\
 uniform usampler2D u_tex;\n\
 uniform usampler2D v_tex;\n\
@@ -35,30 +35,30 @@ void main() {\n\
   float r=y+1.402*(v-128);\n\
   float g=y-0.34414*(u-128)-0.71414*(v-128);\n\
   float b=y+1.772*(u-128);\n\
-  color=vec4(r/255.0,g/255.0,b/255.0,1.0);\n\
+  color=vec3(r,g,b)/255.0;\n\
 }";
 
 static const char RGB_FRAG[]="\
 #version 140\n\
 in vec2 out_tex;\n\
-out vec4 color;\n\
+out vec3 color;\n\
 uniform usampler2D rgb_tex;\n\
 void main() {\n\
   int s=int(out_tex.s);\n\
   int t=int(out_tex.t);\n\
-  color=vec4(texelFetch(rgb_tex,ivec2(s,t),0).rgb/255.0,1.0);\n\
+  color=vec3(texelFetch(rgb_tex,ivec2(s,t),0).rgb)/255.0;\n\
 }";
 
 static const char GREY_FRAG[]="\
 #version 140\n\
 in vec2 out_tex;\n\
-out vec4 color;\n\
+out vec3 color;\n\
 uniform usampler2D grey_tex;\n\
 void main() {\n\
   int s=int(out_tex.s);\n\
   int t=int(out_tex.t);\n\
-  float y=float(texelFetch(grey_tex,ivec2(s,t),0).r);\n\
-  color=vec4(y/255.0,y/255.0,y/255.0,1.0);\n\
+  float y=float(texelFetch(grey_tex,ivec2(s,t),0).r)/255.0;\n\
+  color=vec3(y,y,y);\n\
 }";
 
 typedef struct vertex vertex;
