@@ -155,6 +155,57 @@ static GLint bind_int1(GLuint prog,const char *name, int val) {
   return GL_TRUE;
 }
 
+/* This program creates a VBO / VAO and binds the texture coodinates for a
+    shader program that assumes the TEX_VERT vertex shader. */
+static GLint create_tex_rect(GLuint *vao, GLuint *vbo, GLuint prog, int width,
+ int height) {
+  GLint in_pos;
+  GLint in_tex;
+  vertex v[4];
+
+  in_pos = glGetAttribLocation(prog, "in_pos");
+  if (in_pos < 0) {
+    fprintf(stderr, "Error finding attribute 'in_pos' in program %i\n", prog);
+    return GL_FALSE;
+  }
+
+  in_tex = glGetAttribLocation(prog, "in_tex");
+  if (in_tex < 0) {
+    fprintf(stderr, "Error finding attribute 'in_tex' in program %i\n", prog);
+    return GL_FALSE;
+  }
+
+  /* Set the vertex world positions */
+  v[0].x =  1.0; v[0].y =  1.0; v[1].z = 0.0;
+  v[1].x =  1.0; v[1].y = -1.0; v[2].z = 0.0;
+  v[2].x = -1.0; v[2].y =  1.0; v[0].z = 0.0;
+  v[3].x = -1.0; v[3].y = -1.0; v[3].z = 0.0;
+
+  /* Set the vertex texture coordinates */
+  v[0].s = width; v[0].t = 0;
+  v[1].s = width; v[1].t = height;
+  v[2].s = 0;     v[2].t = 0;
+  v[3].s = 0;     v[3].t = height;
+
+  glGenVertexArrays(1, vao);
+  glBindVertexArray(*vao);
+
+  glGenBuffers(1, vbo);
+  glBindBuffer(GL_ARRAY_BUFFER, *vbo);
+
+  glBufferData(GL_ARRAY_BUFFER, sizeof(v), v, GL_STATIC_DRAW);
+
+  glVertexAttribPointer(in_pos, 3, GL_FLOAT, GL_FALSE, sizeof(vertex),
+   (void *)0);
+
+  glVertexAttribIPointer(in_tex, 2, GL_INT, sizeof(vertex), (void *)12);
+
+  glEnableVertexAttribArray(in_pos);
+  glEnableVertexAttribArray(in_tex);
+
+  return GL_TRUE;
+}
+
 static const char *OPTSTRING = "hi:o:";
 
 static const struct option OPTIONS[] = {
@@ -405,45 +456,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* Create the vertex buffer object */
-    {
-      GLint in_pos;
-      GLint in_tex;
-      vertex v[4];
-
-      in_pos = glGetAttribLocation(prog, "in_pos");
-      printf("in_pos %i\n", in_pos);
-
-      in_tex = glGetAttribLocation(prog, "in_tex");
-      printf("in_tex %i\n", in_tex);
-
-      /* Set the vertex world positions */
-      v[0].x =  1.0; v[0].y =  1.0; v[1].z = 0.0;
-      v[1].x =  1.0; v[1].y = -1.0; v[2].z = 0.0;
-      v[2].x = -1.0; v[2].y =  1.0; v[0].z = 0.0;
-      v[3].x = -1.0; v[3].y = -1.0; v[3].z = 0.0;
-
-      /* Set the vertex texture coordinates */
-      v[0].s = img.width; v[0].t = 0;
-      v[1].s = img.width; v[1].t = img.height;
-      v[2].s = 0;         v[2].t = 0;
-      v[3].s = 0;         v[3].t = img.height;
-
-      glGenVertexArrays(1, &vao);
-      glBindVertexArray(vao);
-
-      glGenBuffers(1, &vbo);
-      glBindBuffer(GL_ARRAY_BUFFER, vbo);
-
-      glBufferData(GL_ARRAY_BUFFER, sizeof(v), v, GL_STATIC_DRAW);
-
-      glVertexAttribPointer(in_pos, 3, GL_FLOAT, GL_FALSE, sizeof(vertex),
-       (void *)0);
-
-      glVertexAttribIPointer(in_tex, 2, GL_INT, sizeof(vertex), (void *)12);
-
-      glEnableVertexAttribArray(in_pos);
-      glEnableVertexAttribArray(in_tex);
-    }
+    create_tex_rect(&vao, &vbo, prog, img.width, img.height);
 
     glBindFragDataLocation(prog, 0, "color");
     glUseProgram(prog);
