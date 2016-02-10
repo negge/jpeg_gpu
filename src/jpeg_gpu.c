@@ -72,7 +72,7 @@ static GLint load_shader(GLuint *_shad,GLenum _shader,const char *_src) {
   glCompileShader(shad);
   glGetShaderInfoLog(shad, 8192, &len, buf);
   if (len > 0) {
-    printf("%s", buf);
+    printf("%s:%s", _src, buf);
   }
   glGetShaderiv(shad, GL_COMPILE_STATUS, &status);
   if (status != GL_TRUE) {
