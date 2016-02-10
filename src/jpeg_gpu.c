@@ -477,7 +477,6 @@ int main(int argc, char *argv[]) {
 
     switch (out) {
       case JPEG_DECODE_YUV : {
-        glGenTextures(img.nplanes, tex);
         for (i = 0; i < img.nplanes; i++) {
           image_plane *plane;
           plane = &img.plane[i];
