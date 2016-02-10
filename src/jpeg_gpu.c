@@ -12,61 +12,10 @@
 
 #define NPROGS_MAX (3)
 
-static const char TEX_VERT[]="\
-#version 140\n\
-in vec3 in_pos;\n\
-in ivec2 in_tex;\n\
-out vec2 tex_coord;\n\
-void main() {\n\
-  gl_Position = vec4(in_pos.x, in_pos.y, in_pos.z, 1.0);\n\
-  tex_coord = vec2(in_tex);\n\
-}";
-
-static const char YUV_FRAG[]="\
-#version 140\n\
-in vec2 tex_coord;\n\
-out vec3 color;\n\
-uniform int u_xdec;\n\
-uniform int u_ydec;\n\
-uniform int v_xdec;\n\
-uniform int v_ydec;\n\
-uniform usampler2D y_tex;\n\
-uniform usampler2D u_tex;\n\
-uniform usampler2D v_tex;\n\
-void main() {\n\
-  int s=int(tex_coord.s);\n\
-  int t=int(tex_coord.t);\n\
-  float y=float(texelFetch(y_tex,ivec2(s,t),0).r);\n\
-  float u=float(texelFetch(u_tex,ivec2(s>>u_xdec,t>>u_ydec),0).r);\n\
-  float v=float(texelFetch(v_tex,ivec2(s>>v_xdec,t>>v_ydec),0).r);\n\
-  float r=y+1.402*(v-128);\n\
-  float g=y-0.34414*(u-128)-0.71414*(v-128);\n\
-  float b=y+1.772*(u-128);\n\
-  color=vec3(r,g,b)/255.0;\n\
-}";
-
-static const char RGB_FRAG[]="\
-#version 140\n\
-in vec2 tex_coord;\n\
-out vec3 color;\n\
-uniform usampler2D rgb_tex;\n\
-void main() {\n\
-  int s=int(tex_coord.s);\n\
-  int t=int(tex_coord.t);\n\
-  color=vec3(texelFetch(rgb_tex,ivec2(s,t),0).rgb)/255.0;\n\
-}";
-
-static const char GREY_FRAG[]="\
-#version 140\n\
-in vec2 tex_coord;\n\
-out vec3 color;\n\
-uniform usampler2D grey_tex;\n\
-void main() {\n\
-  int s=int(tex_coord.s);\n\
-  int t=int(tex_coord.t);\n\
-  float y=float(texelFetch(grey_tex,ivec2(s,t),0).r)/255.0;\n\
-  color=vec3(y,y,y);\n\
-}";
+#define TEX_VERT  "res/tex.vs.glsl"
+#define YUV_FRAG  "res/yuv.fs.glsl"
+#define RGB_FRAG  "res/rgb.fs.glsl"
+#define GREY_FRAG "res/grey.fs.glsl"
 
 typedef struct vertex vertex;
 
@@ -90,17 +39,40 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action,
 
 /* Compile the shader fragment. */
 static GLint load_shader(GLuint *_shad,GLenum _shader,const char *_src) {
-  int    len;
+  FILE *fp;
+  int size;
+  int len;
   GLuint shad;
-  char info[8192];
+  char buf[8192];
+  const char *src;
   GLint  status;
-  len = strlen(_src);
+  fp = fopen(_src, "rb");
+  if (fp == NULL) {
+    fprintf(stderr, "Error, could not open shader file %s\n", _src);
+    return GL_FALSE;
+  }
+  fseek(fp, 0, SEEK_END);
+  size = ftell(fp);
+  if (size > 8192) {
+    fprintf(stderr, "Error, shader file %s too large %i\n", _src, size);
+    return GL_FALSE;
+  }
+  fseek(fp, 0, SEEK_SET);
+  len = fread(buf, 1, size, fp);
+  if (len != size) {
+    fprintf(stderr, "Error reading shader file, got %i of %i bytes\n", len,
+     size);
+    return GL_FALSE;
+  }
+  buf[len]='\0';
+  fclose(fp);
   shad = glCreateShader(_shader);
-  glShaderSource(shad, 1, &_src, &len);
+  src = buf;
+  glShaderSource(shad, 1, &src, &len);
   glCompileShader(shad);
-  glGetShaderInfoLog(shad, 8192, &len, info);
+  glGetShaderInfoLog(shad, 8192, &len, buf);
   if (len > 0) {
-    printf("%s", info);
+    printf("%s", buf);
   }
   glGetShaderiv(shad, GL_COMPILE_STATUS, &status);
   if (status != GL_TRUE) {
