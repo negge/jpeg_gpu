@@ -602,6 +602,8 @@ int main(int argc, char *argv[]) {
               pl = &img.plane[i];
               update_texture(tex[i], i, pl->width, pl->height, U8_1, pl->data);
             }
+            glClear(GL_COLOR_BUFFER_BIT);
+            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
             break;
           }
           case JPEG_DECODE_RGB : {
@@ -617,6 +619,8 @@ int main(int argc, char *argv[]) {
                 break;
               }
             }
+            glClear(GL_COLOR_BUFFER_BIT);
+            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
             break;
           }
           default : {
@@ -624,10 +628,6 @@ int main(int argc, char *argv[]) {
             return EXIT_FAILURE;
           }
         }
-
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
         glfwSwapBuffers(window);
       }
