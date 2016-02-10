@@ -212,6 +212,65 @@ static void update_texture(GLuint tex, int id, int width, int height,
   glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, format, type, data);
 }
 
+static void print_texture(GLuint tex, int width, int height,
+ texture_format fmt, void *buf) {
+  int i, j;
+  glBindTexture(GL_TEXTURE_2D, tex);
+  printf("Texture %i:\n", tex);
+  switch (fmt) {
+    case U8_1 : {
+      unsigned char *pixels;
+      glGetTexImage(GL_TEXTURE_2D, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, buf);
+      pixels = buf;
+      for (j = 0; j < height; j++) {
+        for (i = 0; i < width; i++) {
+          printf("%s%4i", i > 0 ? ", " : "", pixels[j*width + i]);
+        }
+        printf("\n");
+      }
+      break;
+    }
+    case U8_3 : {
+      unsigned char *pixels;
+      glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB_INTEGER, GL_UNSIGNED_BYTE, buf);
+      pixels = buf;
+      for (j = 0; j < height; j++) {
+        for (i = 0; i < width*3; i++) {
+          printf("%s%4i%s", i%3 == 0 ? "(" : "", pixels[j*width*3 + i],
+           (i + 1)%3 == 0 ? ") " : ", ");
+        }
+        printf("\n");
+      }
+      break;
+    }
+    case I16_1 : {
+      short *pixels;
+      glGetTexImage(GL_TEXTURE_2D, 0, GL_RED_INTEGER, GL_SHORT, buf);
+      pixels = buf;
+      for (j = 0; j < height; j++) {
+        for (i = 0; i < width; i++) {
+          printf("%s%4i", i > 0 ? ", " : "", pixels[j*width + i]);
+        }
+        printf("\n");
+      }
+      break;
+    }
+    case I16_4 : {
+      short *pixels;
+      glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA_INTEGER, GL_SHORT, buf);
+      pixels = buf;
+      for (j = 0; j < height; j++) {
+        for (i = 0; i < width*4; i++) {
+          printf("%s%4i%s", i%4 == 0 ? "(" : "", pixels[j*width*4 + i],
+           (i + 1)%4 == 0 ? ") " : ", ");
+        }
+        printf("\n");
+      }
+      break;
+    }
+  }
+}
+
 /* This program creates a VBO / VAO and binds the texture coodinates for a
     shader program that assumes the TEX_VERT vertex shader. */
 static GLint create_tex_rect(GLuint *vao, GLuint *vbo, GLuint prog, int width,
