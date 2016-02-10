@@ -386,16 +386,43 @@ int main(int argc, char *argv[]) {
     }
     if (dump) {
       int i, j, k;
-      (*vtbl.decode_image)(dec, &img, JPEG_DECODE_YUV);
+      (*vtbl.decode_image)(dec, &img, out);
       for (i = 0; i < img.nplanes; i++) {
         image_plane *plane;
         plane = &img.plane[i];
         printf("Plane %i\n", i);
-        for (k = 0; k < plane->height; k++) {
-          for (j = 0; j < plane->width; j++) {
-            printf("%i ", plane->data[k*plane->width + j]);
+        switch (out) {
+          case JPEG_DECODE_QUANT : {
+            for (k = 0; k < plane->height; k++) {
+              for (j = 0; j < plane->width; j++) {
+                printf("%4i ", plane->coef[k*plane->width + j]);
+              }
+              printf("\n");
+            }
+            break;
           }
-          printf("\n");
+          case JPEG_DECODE_YUV : {
+            for (k = 0; k < plane->height; k++) {
+              for (j = 0; j < plane->width; j++) {
+                printf("%4i ", plane->data[k*plane->width + j]);
+              }
+              printf("\n");
+            }
+            break;
+          }
+          case JPEG_DECODE_RGB : {
+            for (k = 0; k < img.height; k++) {
+              for (j = 0; j < img.width; j++) {
+                printf("%4i ", img.pixels[(k*plane->width + j)*3 + i]);
+              }
+              printf("\n");
+            }
+            break;
+          }
+          default : {
+            fprintf(stderr, "Unsupported output %i\n", out);
+            return EXIT_FAILURE;
+          }
         }
         printf("\n");
       }
