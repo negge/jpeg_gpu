@@ -6,16 +6,12 @@
 #define GLFW_INCLUDE_GLCOREARB
 #define GL_GLEXT_PROTOTYPES
 #include <GLFW/glfw3.h>
+#include "jpeg_gpu.h"
 #include "jpeg_wrap.h"
 
 #define NAME "jpeg_gpu"
 
 #define NPROGS_MAX (3)
-
-#define TEX_VERT  "res/tex.vs.glsl"
-#define YUV_FRAG  "res/yuv.fs.glsl"
-#define RGB_FRAG  "res/rgb.fs.glsl"
-#define GREY_FRAG "res/grey.fs.glsl"
 
 typedef struct vertex vertex;
 
@@ -39,40 +35,17 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action,
 
 /* Compile the shader fragment. */
 static GLint load_shader(GLuint *_shad,GLenum _shader,const char *_src) {
-  FILE *fp;
-  int size;
   int len;
   GLuint shad;
-  char buf[8192];
-  const char *src;
+  char info[8192];
   GLint  status;
-  fp = fopen(_src, "rb");
-  if (fp == NULL) {
-    fprintf(stderr, "Error, could not open shader file %s\n", _src);
-    return GL_FALSE;
-  }
-  fseek(fp, 0, SEEK_END);
-  size = ftell(fp);
-  if (size > 8192) {
-    fprintf(stderr, "Error, shader file %s too large %i\n", _src, size);
-    return GL_FALSE;
-  }
-  fseek(fp, 0, SEEK_SET);
-  len = fread(buf, 1, size, fp);
-  if (len != size) {
-    fprintf(stderr, "Error reading shader file, got %i of %i bytes\n", len,
-     size);
-    return GL_FALSE;
-  }
-  buf[len]='\0';
-  fclose(fp);
+  len = strlen(_src);
   shad = glCreateShader(_shader);
-  src = buf;
-  glShaderSource(shad, 1, &src, &len);
+  glShaderSource(shad, 1, &_src, &len);
   glCompileShader(shad);
-  glGetShaderInfoLog(shad, 8192, &len, buf);
+  glGetShaderInfoLog(shad, 8192, &len, info);
   if (len > 0) {
-    printf("%s:%s", _src, buf);
+    printf("%s:%s", _src, info);
   }
   glGetShaderiv(shad, GL_COMPILE_STATUS, &status);
   if (status != GL_TRUE) {
@@ -272,7 +245,7 @@ static void print_texture(GLuint tex, int width, int height,
 }
 
 /* This program creates a VBO / VAO and binds the texture coodinates for a
-    shader program that assumes the TEX_VERT vertex shader. */
+    shader program that assumes the TEX_VS vertex shader. */
 static GLint create_tex_rect(GLuint *vao, GLuint *vbo, GLuint prog, int width,
  int height) {
   GLint in_pos;
@@ -544,7 +517,7 @@ int main(int argc, char *argv[]) {
         }
         switch (img.nplanes) {
           case 1 : {
-            if (!setup_shader(&prog[0], TEX_VERT, GREY_FRAG)) {
+            if (!setup_shader(&prog[0], TEX_VS, GREY_FS)) {
               return EXIT_FAILURE;
             }
             if (!bind_int1(prog[0], "grey_tex", 0)) {
@@ -553,7 +526,7 @@ int main(int argc, char *argv[]) {
             break;
           }
           case 3 : {
-            if (!setup_shader(&prog[0], TEX_VERT, YUV_FRAG)) {
+            if (!setup_shader(&prog[0], TEX_VS, YUV_FS)) {
               return EXIT_FAILURE;
             }
             if (!bind_int1(prog[0], "y_tex", 0)) {
@@ -592,7 +565,7 @@ int main(int argc, char *argv[]) {
             if (!create_texture(tex, 0, img.width, img.height, U8_1)) {
               return EXIT_FAILURE;
             }
-            if (!setup_shader(&prog[0], TEX_VERT, GREY_FRAG)) {
+            if (!setup_shader(&prog[0], TEX_VS, GREY_FS)) {
               return EXIT_FAILURE;
             }
             if (!bind_int1(prog[0], "grey_tex", 0)) {
@@ -604,7 +577,7 @@ int main(int argc, char *argv[]) {
             if (!create_texture(tex, 0, img.width, img.height, U8_3)) {
               return EXIT_FAILURE;
             }
-            if (!setup_shader(&prog[0], TEX_VERT, RGB_FRAG)) {
+            if (!setup_shader(&prog[0], TEX_VS, RGB_FS)) {
               return EXIT_FAILURE;
             }
             if (!bind_int1(prog[0], "rgb_tex", 0)) {
