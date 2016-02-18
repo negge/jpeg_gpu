@@ -138,11 +138,12 @@ static void printBits(int value, int bits) {
   do { \
     int bits; \
     int value; \
+    int lookup; \
     XJPEG_FILL_BITS(ctx, 2*LOOKUP_BITS); \
     XJPEG_PEEK_BITS(ctx, LOOKUP_BITS, value); \
-    symbol = (huff)->lookup[value]; \
-    bits = symbol >> LOOKUP_BITS; \
-    symbol &= (1 << LOOKUP_BITS) - 1; \
+    lookup = (huff)->lookup[value]; \
+    bits = lookup >> LOOKUP_BITS; \
+    symbol = lookup & (1 << LOOKUP_BITS) - 1; \
     XJPEG_SKIP_BITS(ctx, bits); \
     if (bits > LOOKUP_BITS) { \
       value = ((ctx)->bitbuf >> (ctx)->bits) & ((1 << bits) - 1); \
@@ -390,7 +391,7 @@ static void xjpeg_decode_scan(xjpeg_decode_ctx *ctx,
  image_plane *plane[NPLANES_MAX]) {
   int mcu_counter;
   int rst_counter;
-  int dc_pred[NCOMPS_MAX];
+  short dc_pred[NCOMPS_MAX];
   int mbx;
   int mby;
   mcu_counter = ctx->restart_interval;
@@ -409,9 +410,9 @@ static void xjpeg_decode_scan(xjpeg_decode_ctx *ctx,
         ip = plane[i];
         for (sby = 0; sby < pi->vsamp; sby++) {
           for (sbx = 0; sbx < pi->hsamp; sbx++) {
-            int block[64];
-            int symbol;
-            int value;
+            short block[64];
+            unsigned char symbol;
+            short value;
             int j, k;
             memset(block, 0, sizeof(block));
             XJPEG_DECODE_VLC(ctx, &ctx->dc_huff[comp->td], symbol, value);
@@ -441,7 +442,7 @@ static void xjpeg_decode_scan(xjpeg_decode_ctx *ctx,
             od_bin_idct8x8(block, 8, block, 8);
             {
               unsigned char *data;
-              int *b;
+              short *b;
               data = ip->data +
                ((mby*pi->vsamp + sby)*ip->ystride << 3) +
                ((mbx*pi->hsamp + sbx)*ip->xstride << 3);

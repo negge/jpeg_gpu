@@ -98,7 +98,7 @@
   } \
   while (0)
 
-static void od_bin_idct8(int *x, int xstride, const int y[8]) {
+static void od_bin_idct8(short *x, int xstride, const short y[8]) {
   int t0;
   int t1;
   int t2;
@@ -116,18 +116,18 @@ static void od_bin_idct8(int *x, int xstride, const int y[8]) {
   t3 = y[6] << OD_COEFF_SHIFT;
   t7 = y[7] << OD_COEFF_SHIFT;
   OD_IDCT_8(t0, t4, t2, t6, t1, t5, t3, t7);
-  x[0*xstride] = OD_DCT_RSHIFT(t0, OD_COEFF_SHIFT);
-  x[1*xstride] = OD_DCT_RSHIFT(t1, OD_COEFF_SHIFT);
-  x[2*xstride] = OD_DCT_RSHIFT(t2, OD_COEFF_SHIFT);
-  x[3*xstride] = OD_DCT_RSHIFT(t3, OD_COEFF_SHIFT);
-  x[4*xstride] = OD_DCT_RSHIFT(t4, OD_COEFF_SHIFT);
-  x[5*xstride] = OD_DCT_RSHIFT(t5, OD_COEFF_SHIFT);
-  x[6*xstride] = OD_DCT_RSHIFT(t6, OD_COEFF_SHIFT);
-  x[7*xstride] = OD_DCT_RSHIFT(t7, OD_COEFF_SHIFT);
+  x[0*xstride] = (short)OD_DCT_RSHIFT(t0, OD_COEFF_SHIFT);
+  x[1*xstride] = (short)OD_DCT_RSHIFT(t1, OD_COEFF_SHIFT);
+  x[2*xstride] = (short)OD_DCT_RSHIFT(t2, OD_COEFF_SHIFT);
+  x[3*xstride] = (short)OD_DCT_RSHIFT(t3, OD_COEFF_SHIFT);
+  x[4*xstride] = (short)OD_DCT_RSHIFT(t4, OD_COEFF_SHIFT);
+  x[5*xstride] = (short)OD_DCT_RSHIFT(t5, OD_COEFF_SHIFT);
+  x[6*xstride] = (short)OD_DCT_RSHIFT(t6, OD_COEFF_SHIFT);
+  x[7*xstride] = (short)OD_DCT_RSHIFT(t7, OD_COEFF_SHIFT);
 }
 
-void od_bin_idct8x8(int *x, int xstride, const int *y, int ystride) {
-  int z[8*8];
+void od_bin_idct8x8(short *x, int xstride, const short *y, int ystride) {
+  short z[8*8];
   int i;
   for (i = 0; i < 8; i++) od_bin_idct8(z + i, 8, y + ystride*i);
   for (i = 0; i < 8; i++) od_bin_idct8(x + i, xstride, z + 8*i);
