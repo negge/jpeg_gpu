@@ -221,7 +221,7 @@ static int xjpeg_decode_image_(xjpeg_decode_ctx *ctx, image *img,
  jpeg_decode_out out) {
   switch (out) {
     case JPEG_DECODE_YUV : {
-      xjpeg_decode_image(ctx, img);
+      xjpeg_decode_image(ctx, img, (xjpeg_decode_out)out);
       if (ctx->error) {
         fprintf(stderr, "%s\n", ctx->error);
         return EXIT_FAILURE;

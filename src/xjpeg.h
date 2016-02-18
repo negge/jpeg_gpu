@@ -116,8 +116,16 @@ struct xjpeg_decode_ctx {
   unsigned char marker;
 };
 
+typedef enum xjpeg_decode_out {
+  XJPEG_DECODE_QUANT,
+  XJPEG_DECODE_DCT,
+  XJPEG_DECODE_YUV,
+  XJPEG_DECODE_RGB
+} xjpeg_decode_out;
+
 void xjpeg_init(xjpeg_decode_ctx *ctx, const unsigned char *buf, int size);
 void xjpeg_decode_header(xjpeg_decode_ctx *ctx);
-void xjpeg_decode_image(xjpeg_decode_ctx *ctx, image *img);
+void xjpeg_decode_image(xjpeg_decode_ctx *ctx, image *img,
+ xjpeg_decode_out out);
 
 #endif

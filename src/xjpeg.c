@@ -498,7 +498,8 @@ static void xjpeg_decode_scan(xjpeg_decode_ctx *ctx,
   }
 }
 
-static void xjpeg_decode_sos(xjpeg_decode_ctx *ctx, image *img) {
+static void xjpeg_decode_sos(xjpeg_decode_ctx *ctx, image *img,
+ xjpeg_decode_out out) {
   unsigned short len;
   xjpeg_scan_header *scan;
   int i, j;
@@ -546,7 +547,15 @@ static void xjpeg_decode_sos(xjpeg_decode_ctx *ctx, image *img) {
   XJPEG_ERROR(ctx, byte & 0x7 != 0, "Error SOS expected Al value 0.");
   len -= 3;
   XJPEG_ERROR(ctx, len != 0, "Error decoding SOS, unprocessed bytes.");
-  xjpeg_decode_scan(ctx, plane);
+  switch (out) {
+    case XJPEG_DECODE_YUV : {
+      xjpeg_decode_scan(ctx, plane);
+      break;
+    }
+    default : {
+      XJPEG_ERROR(ctx, 1, "Error, unsupported output format.");
+    }
+  }
 }
 
 static void xjpeg_skip_marker(xjpeg_decode_ctx *ctx) {
@@ -556,7 +565,8 @@ static void xjpeg_skip_marker(xjpeg_decode_ctx *ctx) {
   XJPEG_SKIP_BYTES(ctx, len - 2);
 }
 
-static void xjpeg_decode(xjpeg_decode_ctx *ctx, int headers_only, image *img) {
+static void xjpeg_decode(xjpeg_decode_ctx *ctx, int headers_only, image *img,
+ xjpeg_decode_out out) {
   while (!ctx->error && !ctx->end_of_image) {
     unsigned char marker;
     marker = ctx->marker;
@@ -605,7 +615,7 @@ static void xjpeg_decode(xjpeg_decode_ctx *ctx, int headers_only, image *img) {
       }
       /* Start of Scans */
       case 0xDA : {
-        xjpeg_decode_sos(ctx, img);
+        xjpeg_decode_sos(ctx, img, out);
         break;
       }
       default : {
@@ -617,11 +627,12 @@ static void xjpeg_decode(xjpeg_decode_ctx *ctx, int headers_only, image *img) {
 }
 
 void xjpeg_decode_header(xjpeg_decode_ctx *ctx) {
-  xjpeg_decode(ctx, 1, NULL);
+  xjpeg_decode(ctx, 1, NULL, (xjpeg_decode_out)0);
 }
 
-void xjpeg_decode_image(xjpeg_decode_ctx *ctx, image *img) {
-  xjpeg_decode(ctx, 0, img);
+void xjpeg_decode_image(xjpeg_decode_ctx *ctx, image *img,
+ xjpeg_decode_out out) {
+  xjpeg_decode(ctx, 0, img, out);
 }
 
 void xjpeg_init(xjpeg_decode_ctx *ctx, const unsigned char *buf, int size) {
