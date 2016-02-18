@@ -177,11 +177,11 @@ static xjpeg_decode_ctx *xjpeg_decode_alloc(jpeg_info *info) {
   return ctx;
 }
 
-static int xjpeg_decode_header(xjpeg_decode_ctx *ctx, jpeg_header *headers) {
+static int xjpeg_decode_header_(xjpeg_decode_ctx *ctx, jpeg_header *headers) {
   xjpeg_frame_header *frame;
   int i;
 
-  xjpeg_decode(ctx, 1, NULL);
+  xjpeg_decode_header(ctx);
 
   if (ctx->error) {
     fprintf(stderr, "%s\n", ctx->error);
@@ -217,11 +217,11 @@ static int xjpeg_decode_header(xjpeg_decode_ctx *ctx, jpeg_header *headers) {
   return EXIT_SUCCESS;
 }
 
-static int xjpeg_decode_image(xjpeg_decode_ctx *ctx, image *img,
+static int xjpeg_decode_image_(xjpeg_decode_ctx *ctx, image *img,
  jpeg_decode_out out) {
   switch (out) {
     case JPEG_DECODE_YUV : {
-      xjpeg_decode(ctx, 0, img);
+      xjpeg_decode_image(ctx, img);
       if (ctx->error) {
         fprintf(stderr, "%s\n", ctx->error);
         return EXIT_FAILURE;
@@ -246,8 +246,8 @@ static void xjpeg_decode_free(xjpeg_decode_ctx *ctx) {
 
 const jpeg_decode_ctx_vtbl XJPEG_DECODE_CTX_VTBL = {
   (jpeg_decode_alloc_func)xjpeg_decode_alloc,
-  (jpeg_decode_header_func)xjpeg_decode_header,
-  (jpeg_decode_image_func)xjpeg_decode_image,
+  (jpeg_decode_header_func)xjpeg_decode_header_,
+  (jpeg_decode_image_func)xjpeg_decode_image_,
   (jpeg_decode_reset_func)xjpeg_decode_reset,
   (jpeg_decode_free_func)xjpeg_decode_free
 };

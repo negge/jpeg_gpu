@@ -117,6 +117,7 @@ struct xjpeg_decode_ctx {
 };
 
 void xjpeg_init(xjpeg_decode_ctx *ctx, const unsigned char *buf, int size);
-void xjpeg_decode(xjpeg_decode_ctx *ctx, int headers_only, image *img);
+void xjpeg_decode_header(xjpeg_decode_ctx *ctx);
+void xjpeg_decode_image(xjpeg_decode_ctx *ctx, image *img);
 
 #endif

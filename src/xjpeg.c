@@ -556,7 +556,7 @@ static void xjpeg_skip_marker(xjpeg_decode_ctx *ctx) {
   XJPEG_SKIP_BYTES(ctx, len - 2);
 }
 
-void xjpeg_decode(xjpeg_decode_ctx *ctx, int headers_only, image *img) {
+static void xjpeg_decode(xjpeg_decode_ctx *ctx, int headers_only, image *img) {
   while (!ctx->error && !ctx->end_of_image) {
     unsigned char marker;
     marker = ctx->marker;
@@ -614,6 +614,14 @@ void xjpeg_decode(xjpeg_decode_ctx *ctx, int headers_only, image *img) {
       }
     }
   }
+}
+
+void xjpeg_decode_header(xjpeg_decode_ctx *ctx) {
+  xjpeg_decode(ctx, 1, NULL);
+}
+
+void xjpeg_decode_image(xjpeg_decode_ctx *ctx, image *img) {
+  xjpeg_decode(ctx, 0, img);
 }
 
 void xjpeg_init(xjpeg_decode_ctx *ctx, const unsigned char *buf, int size) {
