@@ -17,6 +17,7 @@ struct image_plane {
   unsigned short height;
   unsigned char *data;
   short *coef;
+  int cstride;
 };
 
 typedef struct image image;
@@ -26,6 +27,7 @@ struct image {
   unsigned short height;
   int nplanes;
   image_plane plane[NPLANES_MAX];
+  short *coef;
   unsigned char *pixels;
 };
 
