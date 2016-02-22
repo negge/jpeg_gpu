@@ -28,6 +28,8 @@ static libjpeg_decode_ctx *libjpeg_decode_alloc(jpeg_info *info) {
 
 static int libjpeg_decode_header(libjpeg_decode_ctx *ctx,
  jpeg_header *headers) {
+  int nhmb;
+  int nvmb;
   int i;
 
   if (jpeg_read_header(&ctx->cinfo, TRUE) != JPEG_HEADER_OK) {
@@ -45,13 +47,18 @@ static int libjpeg_decode_header(libjpeg_decode_ctx *ctx,
     return EXIT_FAILURE;
   }
 
+  nhmb = (headers->width + (ctx->cinfo.max_h_samp_factor << 3) - 1)/
+   (ctx->cinfo.max_h_samp_factor << 3);
+  nvmb = (headers->height + (ctx->cinfo.max_v_samp_factor << 3) - 1)/
+   (ctx->cinfo.max_v_samp_factor << 3);
+
   for (i = 0; i < headers->ncomps; i++) {
     jpeg_component_info *info;
     jpeg_component *comp;
     info = &ctx->cinfo.comp_info[i];
     comp = &headers->comp[i];
-    comp->hblocks = info->width_in_blocks;
-    comp->vblocks = info->height_in_blocks;
+    comp->hblocks = nhmb*info->h_samp_factor;
+    comp->vblocks = nvmb*info->v_samp_factor;
     comp->hsamp = info->h_samp_factor;
     comp->vsamp = info->v_samp_factor;
   }
