@@ -2,10 +2,10 @@
 
 #define OD_COEFF_SHIFT (4)
 
-#define OD_UNBIASED_RSHIFT32(_a, _b) \
- (((_a) - ((_a) >> (32 - (_b)))) >> (_b))
+#define OD_UNBIASED_RSHIFT(_a, _b) \
+ (((_a) < 0 ? ((_a) + ((1 << (_b)) - 1)) : (_a)) >> (_b))
 
-#define OD_DCT_RSHIFT(_a, _b) OD_UNBIASED_RSHIFT32(_a, _b)
+#define OD_DCT_RSHIFT(_a, _b) OD_UNBIASED_RSHIFT(_a, _b)
 
 #define OD_IDCT_2(t0, t1) \
   /* Embedded 2-point orthonormal Type-II iDCT. */ \
