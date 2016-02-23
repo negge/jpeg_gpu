@@ -34,6 +34,16 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action,
   }
 }
 
+static int window_width;
+
+static int window_height;
+
+static void size_callback(GLFWwindow *window, int width, int height) {
+  (void)window;
+  window_width = width;
+  window_height = height;
+}
+
 /* Compile the shader fragment. */
 static GLint load_shader(GLuint *_shad,GLenum _shader,const char *_src) {
   int len;
@@ -478,12 +488,16 @@ int main(int argc, char *argv[]) {
       return EXIT_FAILURE;
     }
 
-    glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-    window = glfwCreateWindow(img.width, img.height, NAME, NULL, NULL);
+    /* These global variables are better than the overhead of calling
+        glfwGetFramebufferSize() to get the current window in repaint loop
+        before the call to glViewport(). */
+    window_width = img.width;
+    window_height = img.height;
+    window = glfwCreateWindow(window_width, window_height, NAME, NULL, NULL);
     if (!window) {
       glfwTerminate();
       return EXIT_FAILURE;
@@ -491,13 +505,12 @@ int main(int argc, char *argv[]) {
 
     glfwMakeContextCurrent(window);
     glfwSetKeyCallback(window, key_callback);
+    glfwSetWindowSizeCallback(window, size_callback);
     glfwSwapInterval(0);
 
     printf("  OpenGL: %s\n",glGetString(GL_VERSION));
     printf("    GLSL: %s\n",glGetString(GL_SHADING_LANGUAGE_VERSION));
     printf("Renderer: %s\n",glGetString(GL_RENDERER));
-
-    glViewport(0, 0, img.width, img.height);
 
     switch (out) {
       case JPEG_DECODE_QUANT : {
@@ -741,7 +754,7 @@ int main(int argc, char *argv[]) {
             glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
             /* Unpack the coefficients and display them */
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
-            glViewport(0, 0, img.width, img.height);
+            glViewport(0, 0, window_width, window_height);
             glUseProgram(prog[2]);
             glBindVertexArray(vao[2]);
             glBindBuffer(GL_ARRAY_BUFFER, vbo[2]);
@@ -755,6 +768,7 @@ int main(int argc, char *argv[]) {
               pl = &img.plane[i];
               update_texture(tex[i], i, pl->width, pl->height, U8_1, pl->data);
             }
+            glViewport(0, 0, window_width, window_height);
             glClear(GL_COLOR_BUFFER_BIT);
             glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
             break;
@@ -772,6 +786,7 @@ int main(int argc, char *argv[]) {
                 break;
               }
             }
+            glViewport(0, 0, window_width, window_height);
             glClear(GL_COLOR_BUFFER_BIT);
             glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
             break;
