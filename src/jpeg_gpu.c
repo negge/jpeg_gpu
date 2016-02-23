@@ -104,47 +104,35 @@ static GLint bind_int1(GLuint prog,const char *name, int val) {
 }
 
 typedef enum texture_format {
-  U8_1,
-  U8_3,
-  I16_1,
-  I16_4
+  U8_1 = 0,
+  U8_3 = 1,
+  I16_1 = 2,
+  I16_4 = 3
 } texture_format;
+
+typedef struct texture_format_info texture_format_info;
+
+struct texture_format_info {
+  GLint internal;
+  GLenum format;
+  GLenum type;
+};
+
+const texture_format_info TEXTURE_FORMATS[] = {
+  { GL_R8UI,    GL_RED_INTEGER,  GL_UNSIGNED_BYTE },
+  { GL_RGB8UI,  GL_RGB_INTEGER,  GL_UNSIGNED_BYTE },
+  { GL_R16I,    GL_RED_INTEGER,  GL_SHORT },
+  { GL_RGBA16I, GL_RGBA_INTEGER, GL_SHORT }
+};
 
 static GLint create_texture(GLuint *tex, int id, int width, int height,
  texture_format fmt) {
   GLint internal;
   GLenum format;
   GLenum type;
-  /* TODO replace with some tables indexed by int_texture_fmt enum */
-  switch (fmt) {
-    case U8_1 : {
-      internal = GL_R8UI;
-      format = GL_RED_INTEGER;
-      type = GL_UNSIGNED_BYTE;
-      break;
-    }
-    case U8_3 : {
-      internal = GL_RGB8UI;
-      format = GL_RGB_INTEGER;
-      type = GL_UNSIGNED_BYTE;
-      break;
-    }
-    case I16_1 : {
-      internal = GL_R16I;
-      format = GL_RED_INTEGER;
-      type = GL_SHORT;
-      break;
-    }
-    case I16_4 : {
-      internal = GL_RGBA16I;
-      format = GL_RGBA_INTEGER;
-      type = GL_SHORT;
-      break;
-    }
-    default : {
-      return GL_FALSE;
-    }
-  }
+  internal = TEXTURE_FORMATS[fmt].internal;
+  format = TEXTURE_FORMATS[fmt].format;
+  type = TEXTURE_FORMATS[fmt].type;
   glGenTextures(1, tex);
   glActiveTexture(GL_TEXTURE0 + id);
   glBindTexture(GL_TEXTURE_2D, *tex);
@@ -159,28 +147,8 @@ static void update_texture(GLuint tex, int id, int width, int height,
  texture_format fmt, GLvoid *data) {
   GLenum format;
   GLenum type;
-  switch (fmt) {
-    case U8_1 : {
-      format = GL_RED_INTEGER;
-      type = GL_UNSIGNED_BYTE;
-      break;
-    }
-    case U8_3 : {
-      format = GL_RGB_INTEGER;
-      type = GL_UNSIGNED_BYTE;
-      break;
-    }
-    case I16_1 : {
-      format = GL_RED_INTEGER;
-      type = GL_SHORT;
-      break;
-    }
-    case I16_4 : {
-      format = GL_RGBA_INTEGER;
-      type = GL_SHORT;
-      break;
-    }
-  }
+  format = TEXTURE_FORMATS[fmt].format;
+  type = TEXTURE_FORMATS[fmt].type;
   glActiveTexture(GL_TEXTURE0 + id);
   glBindTexture(GL_TEXTURE_2D, tex);
   glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, format, type, data);
