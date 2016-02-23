@@ -372,6 +372,9 @@ int main(int argc, char *argv[]) {
           if (strcmp("quant", optarg) == 0) {
             out = JPEG_DECODE_QUANT;
           }
+          else if (strcmp("dct", optarg) == 0) {
+            out = JPEG_DECODE_DCT;
+          }
           else if (strcmp("yuv", optarg) == 0) {
             out = JPEG_DECODE_YUV;
           }
@@ -426,7 +429,8 @@ int main(int argc, char *argv[]) {
         plane = &img.plane[i];
         printf("Plane %i\n", i);
         switch (out) {
-          case JPEG_DECODE_QUANT : {
+          case JPEG_DECODE_QUANT :
+          case JPEG_DECODE_DCT : {
             for (k = 0; k < plane->height; k++) {
               for (j = 0; j < plane->width; j++) {
                 printf("%4i ", plane->coef[k*plane->width + j]);
@@ -513,7 +517,8 @@ int main(int argc, char *argv[]) {
     printf("Renderer: %s\n",glGetString(GL_RENDERER));
 
     switch (out) {
-      case JPEG_DECODE_QUANT : {
+      case JPEG_DECODE_QUANT :
+      case JPEG_DECODE_DCT : {
         int width;
         int height;
         width = img.plane[0].width;
@@ -728,7 +733,8 @@ int main(int argc, char *argv[]) {
 
       if (!no_gpu) {
         switch (out) {
-          case JPEG_DECODE_QUANT : {
+          case JPEG_DECODE_QUANT :
+          case JPEG_DECODE_DCT : {
             int width;
             int height;
             width = img.plane[0].width;

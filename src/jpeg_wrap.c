@@ -227,6 +227,7 @@ static int xjpeg_decode_header_(xjpeg_decode_ctx *ctx, jpeg_header *headers) {
 static int xjpeg_decode_image_(xjpeg_decode_ctx *ctx, image *img,
  jpeg_decode_out out) {
   switch (out) {
+    case JPEG_DECODE_DCT :
     case JPEG_DECODE_YUV : {
       xjpeg_decode_image(ctx, img, (xjpeg_decode_out)out);
       if (ctx->error) {

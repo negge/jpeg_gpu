@@ -439,6 +439,19 @@ static void xjpeg_decode_scan(xjpeg_decode_ctx *ctx,
               XJPEG_LOG("%5i%s", block[j - 1], j & 0x7 ? ", " : "\n");
             }
 #endif
+            {
+              int by;
+              int bx;
+              int off;
+              short *coef;
+              by = (mby*pi->vsamp + sby);
+              bx = (mbx*pi->hsamp + sbx);
+              off = (plane[0]->width<<3)*(by>>ip->xdec) +
+               (plane[0]->width << 3 >> ip->xdec)*(by & ((1 << ip->xdec) - 1)) +
+               (bx << 6);
+              coef = ip->coef + off;
+              memcpy(coef, block, sizeof(block));
+            }
             od_bin_idct8x8(block, 8, block, 8);
             {
               unsigned char *data;
@@ -549,6 +562,7 @@ static void xjpeg_decode_sos(xjpeg_decode_ctx *ctx, image *img,
   len -= 3;
   XJPEG_ERROR(ctx, len != 0, "Error decoding SOS, unprocessed bytes.");
   switch (out) {
+    case XJPEG_DECODE_DCT :
     case XJPEG_DECODE_YUV : {
       xjpeg_decode_scan(ctx, plane);
       break;
