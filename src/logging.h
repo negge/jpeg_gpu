@@ -4,6 +4,7 @@
 #include <stdarg.h>
 
 typedef enum {
+  GLJ_LOG_UNKNOWN,
   GLJ_LOG_GENERIC,
   GLJ_LOG_TEST,
   GLJ_LOG_CATEGORY_MAX
