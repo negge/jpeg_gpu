@@ -28,6 +28,7 @@ typedef int (*glj_logger_function)(glj_log_category cat, glj_log_level level,
 # if defined(GLJ_ENABLE_LOGGING)
 
 void glj_log_init(glj_logger_function logger);
+glj_log_level glj_log_get_level(glj_log_category cat);
 void glj_log_set_level(glj_log_category cat, glj_log_level level);
 int glj_logging_active(glj_log_category cat, glj_log_level level);
 void glj_log(glj_log_category cat, glj_log_level level, const char *fmt, ...);
@@ -37,6 +38,7 @@ void glj_log(glj_log_category cat, glj_log_level level, const char *fmt, ...);
 # else
 
 #  define glj_log_init(logger)
+#  define glj_log_get_level(cat) (0)
 #  define glj_log_set_level(cat, level)
 #  define glj_logging_active(cat, level) (0)
 

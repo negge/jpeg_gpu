@@ -41,6 +41,10 @@ void glj_log_init(glj_logger_function logger) {
   }
 }
 
+glj_log_level glj_log_get_level(glj_log_category cat) {
+  return glj_log_levels[cat];
+}
+
 void glj_log_set_level(glj_log_category cat, glj_log_level level) {
   glj_log_levels[cat] = level;
 }
