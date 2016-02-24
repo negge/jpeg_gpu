@@ -21,17 +21,10 @@ static unsigned int glj_log_levels[GLJ_LOG_CATEGORY_MAX] = { 0 };
 
 static int glj_log_fprintf_stderr(glj_log_category cat, glj_log_level level,
  const char *fmt, va_list ap) {
-  char buf[1024];
-  int rv;
-  rv = snprintf(buf, sizeof(buf), "[%s/%s] %s\n", GLJ_LOG_CATEGORY_NAMES[cat],
-   GLJ_LOG_LEVEL_NAMES[level], fmt);
-  if (rv < 0 || (size_t)rv >= sizeof(buf)) {
-    fprintf(stderr, "Error logging. Format string too long\n");
-    return EXIT_FAILURE;
-  }
-  else {
-    vfprintf(stderr, buf, ap);
-  }
+  fprintf(stderr, "[%s/%s] ", GLJ_LOG_CATEGORY_NAMES[cat],
+   GLJ_LOG_LEVEL_NAMES[level]);
+  vfprintf(stderr, fmt, ap);
+  fprintf(stderr, "\n");
   return EXIT_SUCCESS;
 }
 
