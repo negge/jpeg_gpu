@@ -1,7 +1,4 @@
-#if defined(GLJ_ENABLE_LOGGING)
-# include <stdlib.h>
-# include <stdio.h>
-# include "logging.h"
+#include "logging.h"
 
 const char *GLJ_LOG_CATEGORY_NAMES[GLJ_LOG_CATEGORY_MAX] = {
   "generic",
@@ -16,6 +13,10 @@ const char *GLJ_LOG_LEVEL_NAMES[GLJ_LOG_LEVEL_MAX] = {
   "INFO",
   "DEBUG",
 };
+
+#if defined(GLJ_ENABLE_LOGGING)
+# include <stdlib.h>
+# include <stdio.h>
 
 static unsigned int glj_log_levels[GLJ_LOG_CATEGORY_MAX] = { 0 };
 
