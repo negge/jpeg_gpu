@@ -8,6 +8,7 @@
 #include <GLFW/glfw3.h>
 #include "jpeg_gpu.h"
 #include "jpeg_wrap.h"
+#include "logging.h"
 
 #define NAME "jpeg_gpu"
 
@@ -335,6 +336,7 @@ int main(int argc, char *argv[]) {
   no_cpu = 0;
   no_gpu = 0;
   dump = 0;
+  glj_log_init(NULL);
   vtbl = LIBJPEG_DECODE_CTX_VTBL;
   out = JPEG_DECODE_YUV;
   {

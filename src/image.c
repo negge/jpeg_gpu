@@ -2,6 +2,7 @@
 #include <string.h>
 #include "image.h"
 #include "internal.h"
+#include "logging.h"
 
 #define IMAGE_ALIGN (16)
 
@@ -36,6 +37,10 @@ int image_init(image *img, jpeg_header *header) {
     plane->ystride = plane->xstride*plane->width;
     plane->xdec = OD_ILOG(hmax) - OD_ILOG(comp->hsamp);
     plane->ydec = OD_ILOG(vmax) - OD_ILOG(comp->vsamp);
+    GLJ_LOG((GLJ_LOG_GENERIC, GLJ_LOG_DEBUG,
+     "Plane %i: %ix%i (xstride %i, ystride %i, xdec %i, ydec %i)", i,
+     plane->width, plane->height, plane->xstride, plane->ystride, plane->xdec,
+     plane->ydec));
     plane->data = od_aligned_malloc(plane->ystride*plane->height, IMAGE_ALIGN);
     if (plane->data == NULL) {
       image_clear(img);
