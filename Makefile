@@ -1,16 +1,20 @@
 BIN_DIR := bin
 SRC_DIR := src
 RES_DIR := res
+TEST_DIR := test
 
 BINS := bin/jpeg_gpu
 OBJS := $(patsubst $(SRC_DIR)/%.c,$(BIN_DIR)/%.o,$(filter-out \
  $(patsubst $(BIN_DIR)/%,$(SRC_DIR)/%.c,$(BINS)),$(wildcard $(SRC_DIR)/*.c)))
+TEST := $(patsubst $(TEST_DIR)/%.c,$(BIN_DIR)/test/%, \
+ $(wildcard $(TEST_DIR)/*.c))
 GLSL := $(wildcard $(RES_DIR)/*.glsl)
 
+
 ifneq ($(shell uname),Darwin)
-LIBS := `pkg-config --libs glfw3` `pkg-config --libs gl` -ljpeg
+LIBS := `pkg-config --libs glfw3` `pkg-config --libs gl` -ljpeg -lm
 else
-LIBS := `pkg-config --libs glfw3` -L/usr/local/lib -ljpeg -framework OpenGL
+LIBS := `pkg-config --libs glfw3` -L/usr/local/lib -ljpeg -lm -framework OpenGL
 endif
 
 CFLAGS := -std=c89 -pedantic
@@ -25,7 +29,7 @@ endif
 
 guard=@mkdir -p $(@D)
 
-all: $(OBJS) $(BINS)
+all: $(OBJS) $(BINS) $(TEST)
 
 $(BIN_DIR)/%.o:$(SRC_DIR)/%.c
 	$(guard)
@@ -34,6 +38,13 @@ $(BIN_DIR)/%.o:$(SRC_DIR)/%.c
 $(BIN_DIR)/%:$(SRC_DIR)/%.c $(OBJS)
 	$(guard)
 	$(CC) $(INCLUDES) $(CFLAGS) $< $(OBJS) -o $@ $(LIBS)
+
+$(BIN_DIR)/test/%: $(TEST_DIR)/%.c $(OBJS)
+	$(guard)
+	$(CC) $(INCLUDES) $(CFLAGS) $< $(OBJS) -o $@ $(LIBS)
+
+test: all
+	@true $(foreach test,$(TEST), && $(test))
 
 clean:
 	rm -rf $(BIN_DIR) src/jpeg_gpu.h
