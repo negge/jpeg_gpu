@@ -352,12 +352,12 @@ static void xjpeg_decode_sof(xjpeg_decode_ctx *ctx) {
     XJPEG_ERROR(ctx, plane->hsamp == 0 || plane->hsamp > 4,
      "Error SOF expected Hi value 1 to 4.");
     XJPEG_ERROR(ctx, plane->hsamp == 3, "Unsupported horizontal sampling.");
-    hmax = OD_MAXI(hmax, plane->hsamp);
+    hmax = GLJ_MAXI(hmax, plane->hsamp);
     plane->vsamp = byte & 0x7;
     XJPEG_ERROR(ctx, plane->vsamp == 0 || plane->vsamp > 4,
      "Error SOF expected Vi value 1 to 4.");
     XJPEG_ERROR(ctx, plane->vsamp == 3, "Unsupported vertical sampling.");
-    vmax = OD_MAXI(vmax, plane->vsamp);
+    vmax = GLJ_MAXI(vmax, plane->vsamp);
     XJPEG_DECODE_BYTE(ctx, plane->tq);
     XJPEG_ERROR(ctx, plane->tq > 3, "Error SOF expected Tq value 0 to 3.");
     XJPEG_ERROR(ctx, !ctx->quant[plane->tq].valid,
@@ -464,7 +464,7 @@ static void xjpeg_decode_scan(xjpeg_decode_ctx *ctx,
                 unsigned char *row;
                 row = data;
                 for (j = 0; j < 8; j++) {
-                  *row = OD_CLAMP255(*b + 128);
+                  *row = GLJ_CLAMP255(*b + 128);
                   row++;
                   b++;
                 }

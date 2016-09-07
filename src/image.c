@@ -21,8 +21,8 @@ int image_init(image *img, jpeg_header *header) {
   for (i = 0; i < header->ncomps; i++) {
     jpeg_component *comp;
     comp = &header->comp[i];
-    hmax = OD_MAXI(hmax, comp->hsamp);
-    vmax = OD_MAXI(vmax, comp->vsamp);
+    hmax = GLJ_MAXI(hmax, comp->hsamp);
+    vmax = GLJ_MAXI(vmax, comp->vsamp);
   }
   blocks = 0;
   for (i = 0; i < img->nplanes; i++) {
@@ -35,13 +35,14 @@ int image_init(image *img, jpeg_header *header) {
     /* TODO support 16-bit images */
     plane->xstride = 1;
     plane->ystride = plane->xstride*plane->width;
-    plane->xdec = OD_ILOG(hmax) - OD_ILOG(comp->hsamp);
-    plane->ydec = OD_ILOG(vmax) - OD_ILOG(comp->vsamp);
+    plane->xdec = GLJ_ILOG(hmax) - GLJ_ILOG(comp->hsamp);
+    plane->ydec = GLJ_ILOG(vmax) - GLJ_ILOG(comp->vsamp);
     GLJ_LOG((GLJ_LOG_GENERIC, GLJ_LOG_DEBUG,
      "Plane %i: %ix%i (xstride %i, ystride %i, xdec %i, ydec %i)", i,
      plane->width, plane->height, plane->xstride, plane->ystride, plane->xdec,
      plane->ydec));
-    plane->data = od_aligned_malloc(plane->ystride*plane->height, IMAGE_ALIGN);
+    plane->data =
+     glj_aligned_malloc(plane->ystride*plane->height, IMAGE_ALIGN);
     if (plane->data == NULL) {
       image_clear(img);
       return EXIT_FAILURE;
@@ -51,12 +52,12 @@ int image_init(image *img, jpeg_header *header) {
     plane->cstride = (comp->vblocks + ((1 << plane->xdec) - 1)) >> plane->xdec;
     blocks += (comp->hblocks << plane->xdec)*plane->cstride;
   }
-  img->pixels = od_aligned_malloc(img->width*img->height*3, IMAGE_ALIGN);
+  img->pixels = glj_aligned_malloc(img->width*img->height*3, IMAGE_ALIGN);
   if (img->pixels == NULL) {
     image_clear(img);
     return EXIT_FAILURE;
   }
-  coef = img->coef = od_aligned_malloc(blocks*64*sizeof(short), IMAGE_ALIGN);
+  coef = img->coef = glj_aligned_malloc(blocks*64*sizeof(short), IMAGE_ALIGN);
   if (img->coef == NULL) {
     image_clear(img);
     return EXIT_FAILURE;
@@ -73,10 +74,10 @@ int image_init(image *img, jpeg_header *header) {
 void image_clear(image *img) {
   int i;
   for (i = 0; i < img->nplanes; i++) {
-    od_aligned_free(img->plane[i].data);
+    glj_aligned_free(img->plane[i].data);
   }
-  od_aligned_free(img->pixels);
-  od_aligned_free(img->coef);
+  glj_aligned_free(img->pixels);
+  glj_aligned_free(img->coef);
   memset(img, 0, sizeof(image));
 }
 
