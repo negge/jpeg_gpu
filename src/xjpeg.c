@@ -466,36 +466,44 @@ static void xjpeg_decode_scan(xjpeg_decode_ctx *ctx,
               XJPEG_LOG("%5i%s", block[j - 1], j & 0x7 ? ", " : "\n");
             }
 #endif
-            {
-              int by;
-              int bx;
-              int off;
-              short *coef;
-              by = (mby*pi->vsamp + sby);
-              bx = (mbx*pi->hsamp + sbx);
-              off = (plane[0]->width<<3)*(by>>ip->xdec) +
-               (plane[0]->width << 3 >> ip->xdec)*(by & ((1 << ip->xdec) - 1)) +
-               (bx << 6);
-              coef = ip->coef + off;
-              memcpy(coef, block, sizeof(block));
-            }
-            od_bin_idct8x8(block, 8, block, 8);
-            {
-              unsigned char *data;
-              short *b;
-              data = ip->data +
-               ((mby*pi->vsamp + sby)*ip->ystride << 3) +
-               ((mbx*pi->hsamp + sbx)*ip->xstride << 3);
-              b = block;
-              for (k = 0; k < 8; k++) {
-                unsigned char *row;
-                row = data;
-                for (j = 0; j < 8; j++) {
-                  *row = GLJ_CLAMP255(*b + 128);
-                  row++;
-                  b++;
+            switch (out) {
+              case XJPEG_DECODE_QUANT :
+              case XJPEG_DECODE_DCT : {
+                int by;
+                int bx;
+                int off;
+                short *coef;
+                by = (mby*pi->vsamp + sby);
+                bx = (mbx*pi->hsamp + sbx);
+                off = (plane[0]->width<<3)*(by>>ip->xdec) +
+                 (plane[0]->width << 3 >> ip->xdec)*(by & ((1<<ip->xdec) - 1)) +
+                 (bx<<6);
+                coef = ip->coef + off;
+                memcpy(coef, block, sizeof(block));
+                break;
+              }
+              case XJPEG_DECODE_YUV : {
+                unsigned char *data;
+                short *b;
+                od_bin_idct8x8(block, 8, block, 8);
+                data = ip->data +
+                 ((mby*pi->vsamp + sby)*ip->ystride << 3) +
+                 ((mbx*pi->hsamp + sbx)*ip->xstride << 3);
+                b = block;
+                for (k = 0; k < 8; k++) {
+                  unsigned char *row;
+                  row = data;
+                  for (j = 0; j < 8; j++) {
+                    *row = GLJ_CLAMP255(*b + 128);
+                    row++;
+                    b++;
+                  }
+                  data += ip->ystride;
                 }
-                data += ip->ystride;
+                break;
+              }
+              default : {
+                fprintf(stderr, "Unsupported output %i\n", out);
               }
             }
           }
