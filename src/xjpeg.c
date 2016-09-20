@@ -445,19 +445,21 @@ static void xjpeg_decode_scan(xjpeg_decode_ctx *ctx,
             }
             do {
               XJPEG_DECODE_VLC(ctx, &ctx->ac_huff[comp->ta], symbol, value);
-              if (!symbol) {
-                XJPEG_LOG(("****************** EOB at j = %i\n\n", j));
-                break;
-              }
-              j += (symbol >> 4) + 1;
-              XJPEG_LOG(("j = %i, offset = %i, value = %i, dequant = %i\n", j,
-               (symbol >> 4) + 1, value, value*ctx->quant[pi->tq].tbl[j]));
-              XJPEG_ERROR(ctx, j > 63, "Error indexing outside block.");
-              if (out == XJPEG_DECODE_QUANT) {
-                block[DE_ZIG_ZAG[j]] = value;
+              if (symbol) {
+                j += (symbol >> 4) + 1;
+                XJPEG_LOG(("j = %i, offset = %i, value = %i, dequant = %i\n", j,
+                 (symbol >> 4) + 1, value, value*ctx->quant[pi->tq].tbl[j]));
+                XJPEG_ERROR(ctx, j > 63, "Error indexing outside block.");
+                if (out == XJPEG_DECODE_QUANT) {
+                  block[DE_ZIG_ZAG[j]] = value;
+                }
+                else {
+                  block[DE_ZIG_ZAG[j]] = value*ctx->quant[pi->tq].tbl[j];
+                }
               }
               else {
-                block[DE_ZIG_ZAG[j]] = value*ctx->quant[pi->tq].tbl[j];
+                XJPEG_LOG(("****************** EOB at j = %i\n\n", j));
+                break;
               }
             }
             while (j < 63);
