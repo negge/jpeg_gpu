@@ -402,8 +402,10 @@ static void xjpeg_decode_rsi(xjpeg_decode_ctx *ctx) {
   XJPEG_ERROR(ctx, len != 0, "Error decoding DRI, unprocessed bytes.");
 }
 
+/* TODO Refactor this function so that we can switch on out before reaching
+   the inner loop */
 static void xjpeg_decode_scan(xjpeg_decode_ctx *ctx,
- image_plane *plane[NPLANES_MAX]) {
+ image_plane *plane[NPLANES_MAX], xjpeg_decode_out out) {
   int mcu_counter;
   int rst_counter;
   short dc_pred[NCOMPS_MAX];
@@ -435,7 +437,12 @@ static void xjpeg_decode_scan(xjpeg_decode_ctx *ctx,
             dc_pred[i] += value;
             XJPEG_LOG(("dc_pred = %i\n", pred[i]));
             j = 0;
-            block[0] = dc_pred[i]*ctx->quant[pi->tq].tbl[0];
+            if (out == XJPEG_DECODE_QUANT) {
+              block[0] = dc_pred[i];
+            }
+            else {
+              block[0] = dc_pred[i]*ctx->quant[pi->tq].tbl[0];
+            }
             do {
               XJPEG_DECODE_VLC(ctx, &ctx->ac_huff[comp->ta], symbol, value);
               if (!symbol) {
@@ -446,7 +453,12 @@ static void xjpeg_decode_scan(xjpeg_decode_ctx *ctx,
               XJPEG_LOG(("j = %i, offset = %i, value = %i, dequant = %i\n", j,
                (symbol >> 4) + 1, value, value*ctx->quant[pi->tq].tbl[j]));
               XJPEG_ERROR(ctx, j > 63, "Error indexing outside block.");
-              block[DE_ZIG_ZAG[j]] = value*ctx->quant[pi->tq].tbl[j];
+              if (out == XJPEG_DECODE_QUANT) {
+                block[DE_ZIG_ZAG[j]] = value;
+              }
+              else {
+                block[DE_ZIG_ZAG[j]] = value*ctx->quant[pi->tq].tbl[j];
+              }
             }
             while (j < 63);
 #if LOGGING_ENABLED
@@ -577,9 +589,10 @@ static void xjpeg_decode_sos(xjpeg_decode_ctx *ctx, image *img,
   len -= 3;
   XJPEG_ERROR(ctx, len != 0, "Error decoding SOS, unprocessed bytes.");
   switch (out) {
+    case XJPEG_DECODE_QUANT :
     case XJPEG_DECODE_DCT :
     case XJPEG_DECODE_YUV : {
-      xjpeg_decode_scan(ctx, plane);
+      xjpeg_decode_scan(ctx, plane, out);
       break;
     }
     default : {
