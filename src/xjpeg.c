@@ -330,6 +330,9 @@ static void xjpeg_decode_dht(xjpeg_decode_ctx *ctx) {
   XJPEG_ERROR(ctx, len != 0, "Error decoding DHT, unprocessed bytes.");
 }
 
+#define VSAMP_MAX (4)
+#define HSAMP_MAX (4)
+
 static void xjpeg_decode_sof(xjpeg_decode_ctx *ctx) {
   unsigned short len;
   xjpeg_frame_header *frame;
@@ -364,12 +367,12 @@ static void xjpeg_decode_sof(xjpeg_decode_ctx *ctx) {
     XJPEG_DECODE_BYTE(ctx, plane->id);
     XJPEG_DECODE_BYTE(ctx, byte);
     plane->hsamp = byte >> 4;
-    XJPEG_ERROR(ctx, plane->hsamp == 0 || plane->hsamp > 4,
+    XJPEG_ERROR(ctx, plane->hsamp == 0 || plane->hsamp > HSAMP_MAX,
      "Error SOF expected Hi value 1 to 4.");
     XJPEG_ERROR(ctx, plane->hsamp == 3, "Unsupported horizontal sampling.");
     hmax = GLJ_MAXI(hmax, plane->hsamp);
     plane->vsamp = byte & 0x7;
-    XJPEG_ERROR(ctx, plane->vsamp == 0 || plane->vsamp > 4,
+    XJPEG_ERROR(ctx, plane->vsamp == 0 || plane->vsamp > VSAMP_MAX,
      "Error SOF expected Vi value 1 to 4.");
     XJPEG_ERROR(ctx, plane->vsamp == 3, "Unsupported vertical sampling.");
     vmax = GLJ_MAXI(vmax, plane->vsamp);
