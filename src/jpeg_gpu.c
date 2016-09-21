@@ -310,7 +310,7 @@ static GLint create_tex_rect(GLuint *vao, GLuint *vbo, GLuint prog, int width,
   return GL_TRUE;
 }
 
-static const char *OPTSTRING = "hi:o:d";
+static const char *OPTSTRING = "hi:o:dH";
 
 static const struct option OPTIONS[] = {
   { "help", no_argument, NULL, 'h' },
@@ -319,6 +319,7 @@ static const struct option OPTIONS[] = {
   { "impl", required_argument, NULL, 'i' },
   { "out", required_argument, NULL, 'o' },
   { "dump", no_argument, NULL, 'd' },
+  { "header", no_argument, NULL, 'H' },
   { NULL, 0, NULL, 0 }
 };
 
@@ -336,7 +337,8 @@ static void usage() {
    "                                  and send to the GPU for display.\n"
    "                                 yuv (default) => YUV (4:4:4 or 4:2:0)\n"
    "                                 rgb => RGB (4:4:4)\n"
-   "  -d --dump                      Dump jpeg data in the output format.\n\n"
+   "  -d --dump                      Dump jpeg data in the output format.\n"
+   "  -H --header                    Print the jpeg header.\n\n"
    " %s accepts only 8-bit non-hierarchical JPEG files.\n\n", NAME, NAME);
 }
 
@@ -346,11 +348,13 @@ int main(int argc, char *argv[]) {
   int no_cpu;
   int no_gpu;
   int dump;
+  int head;
   jpeg_info info;
   image img;
   no_cpu = 0;
   no_gpu = 0;
   dump = 0;
+  head = 0;
   glj_log_init(NULL);
   vtbl = LIBJPEG_DECODE_CTX_VTBL;
   out = JPEG_DECODE_YUV;
@@ -368,6 +372,9 @@ int main(int argc, char *argv[]) {
           }
           else if (strcmp(OPTIONS[loi].name, "dump") == 0) {
             dump = 1;
+          }
+          else if (strcmp(OPTIONS[loi].name, "header") == 0) {
+            head = 1;
           }
           break;
         }
@@ -409,6 +416,10 @@ int main(int argc, char *argv[]) {
           dump = 1;
           break;
         }
+        case 'H' : {
+          head = 1;
+          break;
+        }
         case 'h' :
         default : {
           usage();
@@ -434,6 +445,12 @@ int main(int argc, char *argv[]) {
     jpeg_header header;
     dec = (*vtbl.decode_alloc)(&info);
     (*vtbl.decode_header)(dec, &header);
+    if (head) {
+      printf("Image Size     : %ix%i\n", header.width, header.height);
+      printf("Bits Per Pixel : %i\n", header.bits);
+      printf("Components     : %i\n", header.ncomps);
+      return EXIT_SUCCESS;
+    }
     if (image_init(&img, &header) != EXIT_SUCCESS) {
       fprintf(stderr, "Error initializing image\n");
       return EXIT_FAILURE;
