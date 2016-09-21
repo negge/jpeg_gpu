@@ -17,6 +17,14 @@ See the License for the specific language governing permissions and limitations
 # define _jpeg_info_H (1)
 
 # define NCOMPS_MAX (3)
+# define NQUANT_MAX (4)
+
+typedef struct jpeg_quant jpeg_quant;
+
+struct jpeg_quant {
+  unsigned char bits;
+  unsigned short tbl[64];
+};
 
 typedef struct jpeg_component jpeg_component;
 
@@ -25,6 +33,7 @@ struct jpeg_component {
   int vblocks;
   int hsamp;
   int vsamp;
+  jpeg_quant *quant;
 };
 
 typedef struct jpeg_header jpeg_header;
@@ -35,6 +44,7 @@ struct jpeg_header {
   int height;
   int ncomps;
   jpeg_component comp[NCOMPS_MAX];
+  jpeg_quant quant[NQUANT_MAX];
 };
 
 typedef struct jpeg_info jpeg_info;

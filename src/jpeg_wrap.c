@@ -67,6 +67,16 @@ static int libjpeg_decode_header(libjpeg_decode_ctx *ctx,
   nvmb = (headers->height + (ctx->cinfo.max_v_samp_factor << 3) - 1)/
    (ctx->cinfo.max_v_samp_factor << 3);
 
+  for (i = 0; i < NUM_QUANT_TBLS; i++) {
+    JQUANT_TBL *tbl;
+    tbl = ctx->cinfo.quant_tbl_ptrs[i];
+    if (tbl != NULL) {
+      /* Assume 8 bit quantizers */
+      headers->quant[i].bits = 8;
+      memcpy(headers->quant[i].tbl, tbl->quantval, 64*sizeof(unsigned short));
+    }
+  }
+
   for (i = 0; i < headers->ncomps; i++) {
     jpeg_component_info *info;
     jpeg_component *comp;
@@ -76,6 +86,11 @@ static int libjpeg_decode_header(libjpeg_decode_ctx *ctx,
     comp->vblocks = nvmb*info->v_samp_factor;
     comp->hsamp = info->h_samp_factor;
     comp->vsamp = info->v_samp_factor;
+    if (ctx->cinfo.quant_tbl_ptrs[info->quant_tbl_no] == NULL) {
+      fprintf(stderr, "Missing quantization table for components %i\n", i);
+      return EXIT_FAILURE;
+    }
+    comp->quant = &headers->quant[info->quant_tbl_no];
   }
 
   return EXIT_SUCCESS;
@@ -225,6 +240,14 @@ static int xjpeg_decode_header_(xjpeg_decode_ctx *ctx, jpeg_header *headers) {
   headers->height = frame->height;
   headers->ncomps = frame->ncomps;
 
+  for (i = 0; i < NQUANT_MAX; i++) {
+    if (ctx->quant[i].valid) {
+      headers->quant[i].bits = ctx->quant[i].bits;
+      memcpy(headers->quant[i].tbl, ctx->quant[i].tbl,
+       64*sizeof(unsigned short));
+    }
+  }
+
   for (i = 0; i < headers->ncomps; i++) {
     xjpeg_comp_info *info;
     jpeg_component *comp;
@@ -234,6 +257,11 @@ static int xjpeg_decode_header_(xjpeg_decode_ctx *ctx, jpeg_header *headers) {
     comp->vblocks = frame->nvmb*info->vsamp;
     comp->hsamp = info->hsamp;
     comp->vsamp = info->vsamp;
+    if (!ctx->quant[info->tq].valid) {
+      fprintf(stderr, "Invalid quantization table for components %i\n", i);
+      return EXIT_FAILURE;
+    }
+    comp->quant = &headers->quant[info->tq];
   }
 
   return EXIT_SUCCESS;
