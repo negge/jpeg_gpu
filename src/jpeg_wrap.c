@@ -55,6 +55,7 @@ static int libjpeg_decode_header(libjpeg_decode_ctx *ctx,
   /* Copy jpeg headers out of libjpeg decoder struct */
   headers->width = ctx->cinfo.image_width;
   headers->height = ctx->cinfo.image_height;
+  headers->bits = ctx->cinfo.data_precision;
   headers->ncomps = ctx->cinfo.num_components;
 
   if (headers->ncomps != 1 && headers->ncomps != 3) {
@@ -238,6 +239,7 @@ static int xjpeg_decode_header_(xjpeg_decode_ctx *ctx, jpeg_header *headers) {
 
   headers->width = frame->width;
   headers->height = frame->height;
+  headers->bits = frame->bits;
   headers->ncomps = frame->ncomps;
 
   for (i = 0; i < NQUANT_MAX; i++) {
