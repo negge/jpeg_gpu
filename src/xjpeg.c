@@ -64,7 +64,8 @@ static void printBits(int value, int bits) {
 }
 #endif
 
-#define XJPEG_ERROR(ctx, cond, err) \
+#if GLJ_ENABLE_VALIDATION
+# define XJPEG_ERROR(ctx, cond, err) \
   do { \
     if (cond) { \
       (ctx)->error = (err); \
@@ -72,6 +73,9 @@ static void printBits(int value, int bits) {
     } \
   } \
   while (0)
+#else
+# define XJPEG_ERROR(ctx, cond, err) (void)0
+#endif
 
 #define XJPEG_SKIP_BYTES(ctx, nbytes) \
   do { \

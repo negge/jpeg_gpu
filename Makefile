@@ -22,6 +22,7 @@ CFLAGS += -O2 -Wall -Wextra -Wno-parentheses -pedantic -Wno-overlength-strings
 #CFLAGS += -g
 CFLAGS += `pkg-config --cflags glfw3`
 CFLAGS += -DGLJ_ENABLE_LOGGING
+#CFLAGS += -DGLJ_ENABLE_VALIDATION
 
 ifeq ($(shell uname),Darwin)
 CFLAGS += -I/usr/local/include
