@@ -86,6 +86,14 @@ static void printBits(int value, int bits) {
   } \
   while (0)
 
+#define XJPEG_UNSKIP_BYTES(ctx, nbytes) \
+  do { \
+    /* TODO rename pos to buf, size to pos, add a size field, test for under flow */ \
+    (ctx)->pos -= nbytes; \
+    (ctx)->size += nbytes; \
+  } \
+  while (0)
+
 #define XJPEG_DECODE_BYTE(ctx, ret) \
   do { \
     XJPEG_ERROR(ctx, (ctx)->size < 1, "Error reading past the end of file."); \
@@ -102,43 +110,43 @@ static void printBits(int value, int bits) {
   } \
   while (0)
 
-#define XJPEG_FILL_BITS(ctx, nbits) \
+#define XJPEG_FILL_BYTE(ctx) \
   do { \
-    while ((ctx)->bits < nbits) { \
-      unsigned char byte; \
-      XJPEG_ERROR(ctx, ctx->marker, "Error found marker when filling bits."); \
+    unsigned char byte; \
+    XJPEG_DECODE_BYTE(ctx, byte); \
+    (ctx)->bits += 8; \
+    (ctx)->bitbuf = ((ctx)->bitbuf << 8) | byte; \
+    if (byte == 0xFF) { \
       XJPEG_DECODE_BYTE(ctx, byte); \
-      if (byte == 0xFF) { \
-        do { \
-          XJPEG_DECODE_BYTE(ctx, byte); \
-        } \
-        while (byte == 0xFF); \
-        if (byte == 0) { \
-          byte = 0xFF; \
-        } \
-        else { \
-          (ctx)->marker = byte; \
-          (ctx)->bits += nbits; \
-          (ctx)->bitbuf <<= nbits; \
-          break; \
-        } \
+      if (byte != 0x00) { \
+        (ctx)->marker = byte; \
+        XJPEG_UNSKIP_BYTES(ctx, 2); \
+        (ctx)->bitbuf &= ~0xFF; \
       } \
-      (ctx)->bits += 8; \
-      (ctx)->bitbuf = ((ctx)->bitbuf << 8) | byte; \
+    } \
+  } while(0)
+
+#define XJPEG_FILL_BITS(ctx) \
+  do { \
+    if ((ctx)->bits <= 16) { \
+      XJPEG_FILL_BYTE(ctx); \
+      XJPEG_FILL_BYTE(ctx); \
+      XJPEG_FILL_BYTE(ctx); \
+      XJPEG_FILL_BYTE(ctx); \
+      XJPEG_FILL_BYTE(ctx); \
+      XJPEG_FILL_BYTE(ctx); \
     } \
   } \
   while (0)
 
 #define XJPEG_SKIP_BITS(ctx, nbits) \
   do { \
-    XJPEG_FILL_BITS(ctx, nbits); \
     (ctx)->bits -= nbits; \
   } \
   while (0)
 
 #define XJPEG_PEEK_BITS(ctx, nbits, ret) \
   do { \
-    XJPEG_FILL_BITS(ctx, nbits); \
     XJPEG_ERROR(ctx, (ctx)->bits < nbits, "Error not enough bits to peek."); \
     ret = (((ctx)->bitbuf >> ((ctx)->bits - (nbits))) & ((1 << (nbits)) - 1)); \
   } \
@@ -146,7 +154,6 @@ static void printBits(int value, int bits) {
 
 #define XJPEG_DECODE_BITS(ctx, nbits, ret) \
   do { \
-    XJPEG_FILL_BITS(ctx, nbits); \
     XJPEG_ERROR(ctx, (ctx)->bits < nbits, "Error not enough bits to get."); \
     ret = (((ctx)->bitbuf >> ((ctx)->bits - (nbits))) & ((1 << (nbits)) - 1)); \
     (ctx)->bits -= nbits; \
@@ -158,7 +165,7 @@ static void printBits(int value, int bits) {
     int bits; \
     int value; \
     int lookup; \
-    XJPEG_FILL_BITS(ctx, 2*LOOKUP_BITS); \
+    XJPEG_FILL_BITS(ctx); \
     XJPEG_PEEK_BITS(ctx, LOOKUP_BITS, value); \
     lookup = (huff)->lookup[value]; \
     bits = lookup >> LOOKUP_BITS; \
@@ -187,6 +194,7 @@ static void printBits(int value, int bits) {
     int len; \
     XJPEG_DECODE_HUFF(ctx, huff, symbol); \
     len = symbol & 0xf; \
+    XJPEG_FILL_BITS(ctx); \
     XJPEG_DECODE_BITS(ctx, len, value); \
     XJPEG_LOG(("len = %i\n", len)); \
     value += XJPEG_HUFF_EXTEND(value, len); \
@@ -523,6 +531,9 @@ static void xjpeg_decode_scan(xjpeg_decode_ctx *ctx,
       XJPEG_LOG(("mbx = %i, mby = %i, rst_counter = %i, mcu_counter = %i\n",
        mbx, mby, rst_counter, mcu_counter));
       if (ctx->restart_interval && mcu_counter == 0) {
+        XJPEG_ERROR(ctx, ctx->pos[0] != 0xFF, "Error, invalid JPEG syntax.");
+        XJPEG_SKIP_BYTES(ctx, 1);
+        XJPEG_DECODE_BYTE(ctx, ctx->marker);
         XJPEG_ERROR(ctx, !ctx->marker, "Error, expected to find marker.");
         switch (ctx->marker) {
           case 0xD0 :
