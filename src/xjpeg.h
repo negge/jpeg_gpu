@@ -104,6 +104,8 @@ struct xjpeg_scan_header {
   xjpeg_scan_comp comp[NCOMPS_MAX];
 };
 
+typedef size_t xjpeg_decode_word;
+
 typedef struct xjpeg_decode_ctx xjpeg_decode_ctx;
 
 struct xjpeg_decode_ctx {
@@ -113,7 +115,7 @@ struct xjpeg_decode_ctx {
   int size;
 
   /* An MSB buffer of bits read from jpeg file */
-  unsigned int bitbuf;
+  xjpeg_decode_word bitbuf;
   /* Number of bits available in bitbuf */
   int bits;
 
