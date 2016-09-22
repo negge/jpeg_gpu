@@ -43,6 +43,7 @@ struct jpeg_header {
   int width;
   int height;
   int ncomps;
+  int restart_interval;
   jpeg_component comp[NCOMPS_MAX];
   jpeg_quant quant[NQUANT_MAX];
 };

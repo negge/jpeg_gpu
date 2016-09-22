@@ -446,9 +446,10 @@ int main(int argc, char *argv[]) {
     dec = (*vtbl.decode_alloc)(&info);
     (*vtbl.decode_header)(dec, &header);
     if (head) {
-      printf("Image Size     : %ix%i\n", header.width, header.height);
-      printf("Bits Per Pixel : %i\n", header.bits);
-      printf("Components     : %i\n", header.ncomps);
+      printf("Image Size       : %ix%i\n", header.width, header.height);
+      printf("Bits Per Pixel   : %i\n", header.bits);
+      printf("Components       : %i\n", header.ncomps);
+      printf("Restart Interval : %i\n", header.restart_interval);
       return EXIT_SUCCESS;
     }
     if (image_init(&img, &header) != EXIT_SUCCESS) {

@@ -57,6 +57,7 @@ static int libjpeg_decode_header(libjpeg_decode_ctx *ctx,
   headers->height = ctx->cinfo.image_height;
   headers->bits = ctx->cinfo.data_precision;
   headers->ncomps = ctx->cinfo.num_components;
+  headers->restart_interval = ctx->cinfo.restart_interval;
 
   if (headers->ncomps != 1 && headers->ncomps != 3) {
     fprintf(stderr, "Unsupported number of components %i\n", headers->ncomps);
@@ -241,6 +242,7 @@ static int xjpeg_decode_header_(xjpeg_decode_ctx *ctx, jpeg_header *headers) {
   headers->height = frame->height;
   headers->bits = frame->bits;
   headers->ncomps = frame->ncomps;
+  headers->restart_interval = ctx->restart_interval;
 
   for (i = 0; i < NQUANT_MAX; i++) {
     if (ctx->quant[i].valid) {
