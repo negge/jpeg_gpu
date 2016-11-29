@@ -186,8 +186,9 @@ static void printBits(int value, int bits) {
   } \
   while (0)
 
+#define NEG_1 ((unsigned int)-1)
 #define XJPEG_HUFF_EXTEND(value, len) \
- ((((value) - (1 << ((len) - 1))) >> 31) & ((0xFFFF << (len)) + 1))
+ ((((value) - (1 << ((len) - 1))) >> 31) & ((NEG_1 << (len)) + 1))
 
 #define XJPEG_DECODE_VLC(ctx, huff, symbol, value) \
   do { \
