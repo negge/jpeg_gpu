@@ -419,23 +419,48 @@ static void xjpeg_decode_rsi(xjpeg_decode_ctx *ctx) {
   XJPEG_ERROR(ctx, len != 0, "Error decoding DRI, unprocessed bytes.");
 }
 
+typedef struct xjpeg_mcu xjpeg_mcu;
+
+struct xjpeg_mcu {
+  int nblocks;
+  xjpeg_huff *dc_huff[NCOMPS_MAX*VSAMP_MAX*HSAMP_MAX];
+  xjpeg_huff *ac_huff[NCOMPS_MAX*VSAMP_MAX*HSAMP_MAX];
+  short dc_pred[NCOMPS_MAX];
+  short *coef[NCOMPS_MAX];
+};
+
+static void xjpeg_mcu_init(xjpeg_decode_ctx *ctx, xjpeg_mcu *mcu) {
+  int i, j;
+  xjpeg_scan_comp *comp;
+  mcu->nblocks = 0;
+  memset(mcu->dc_pred, 0, sizeof(mcu->dc_pred));
+  for (i = 0, comp = ctx->scan.comp; i < ctx->scan.ncomps; i++, comp++) {
+    xjpeg_comp_info *pi;
+    pi = &ctx->frame.comp[i];
+    for (j = 0; j < pi->vsamp*pi->hsamp; j++) {
+      mcu->dc_huff[mcu->nblocks] = &ctx->dc_huff[comp->td];
+      mcu->ac_huff[mcu->nblocks] = &ctx->ac_huff[comp->ta];
+      mcu->nblocks++;
+    }
+  }
+}
+
 /* TODO Refactor this function so that we can switch on out before reaching
    the inner loop */
 static void xjpeg_decode_scan(xjpeg_decode_ctx *ctx,
  image_plane *plane[NPLANES_MAX], xjpeg_decode_out out) {
   int mcu_counter;
   int rst_counter;
-  short dc_pred[NCOMPS_MAX];
+  xjpeg_mcu mcu;
   int mbx;
   int mby;
   mcu_counter = ctx->restart_interval;
   rst_counter = 0;
-  memset(dc_pred, 0, sizeof(dc_pred));
+  xjpeg_mcu_init(ctx, &mcu);
   for (mby = 0; mby < ctx->frame.nvmb; mby++) {
     for (mbx = 0; mbx < ctx->frame.nhmb; mbx++) {
-      int i;
-      xjpeg_scan_comp *comp;
-      for (i = 0, comp = ctx->scan.comp; i < ctx->scan.ncomps; i++, comp++) {
+      int i, m;
+      for (i = m = 0; i < ctx->scan.ncomps; i++) {
         xjpeg_comp_info *pi;
         image_plane *ip;
         int sby;
@@ -443,25 +468,25 @@ static void xjpeg_decode_scan(xjpeg_decode_ctx *ctx,
         pi = &ctx->frame.comp[i];
         ip = plane[i];
         for (sby = 0; sby < pi->vsamp; sby++) {
-          for (sbx = 0; sbx < pi->hsamp; sbx++) {
+          for (sbx = 0; sbx < pi->hsamp; sbx++, m++) {
             short block[64];
             unsigned char symbol;
             short value;
             int j, k;
             memset(block, 0, sizeof(block));
-            XJPEG_DECODE_VLC(ctx, &ctx->dc_huff[comp->td], symbol, value);
+            XJPEG_DECODE_VLC(ctx, mcu.dc_huff[m], symbol, value);
             XJPEG_LOG(("dc = %i\n", value));
-            dc_pred[i] += value;
+            mcu.dc_pred[i] += value;
             XJPEG_LOG(("dc_pred = %i\n", pred[i]));
             j = 0;
             if (out == XJPEG_DECODE_QUANT) {
-              block[0] = dc_pred[i];
+              block[0] = mcu.dc_pred[i];
             }
             else {
-              block[0] = dc_pred[i]*ctx->quant[pi->tq].tbl[0];
+              block[0] = mcu.dc_pred[i]*ctx->quant[pi->tq].tbl[0];
             }
             do {
-              XJPEG_DECODE_VLC(ctx, &ctx->ac_huff[comp->ta], symbol, value);
+              XJPEG_DECODE_VLC(ctx, mcu.ac_huff[m], symbol, value);
               if (symbol) {
                 j += (symbol >> 4) + 1;
                 XJPEG_LOG(("j = %i, offset = %i, value = %i, dequant = %i\n", j,
@@ -552,7 +577,7 @@ static void xjpeg_decode_scan(xjpeg_decode_ctx *ctx,
             mcu_counter = ctx->restart_interval;
             rst_counter++;
             for (i = 0; i < ctx->scan.ncomps; i++) {
-              dc_pred[i] = 0;
+              mcu.dc_pred[i] = 0;
             }
             break;
           }
