@@ -21,6 +21,13 @@ See the License for the specific language governing permissions and limitations
 #include "xjpeg.h"
 #include "internal.h"
 
+const char *JPEG_DECODE_OUT_NAMES[JPEG_DECODE_OUT_MAX] = {
+  "quant",
+  "dct",
+  "yuv",
+  "rgb",
+};
+
 typedef struct libjpeg_decode_ctx libjpeg_decode_ctx;
 
 struct libjpeg_decode_ctx {
@@ -179,7 +186,8 @@ static int libjpeg_decode_image(libjpeg_decode_ctx *ctx, image *img,
       break;
     }
     default : {
-      fprintf(stderr, "Unsupported output %i for libjpeg wrapper.", out);
+      fprintf(stderr, "Unsupported output '%s' for libjpeg wrapper.\n",
+       JPEG_DECODE_OUT_NAMES[out]);
       return EXIT_FAILURE;
     }
   }
@@ -285,7 +293,8 @@ static int xjpeg_decode_image_(xjpeg_decode_ctx *ctx, image *img,
       break;
     }
     default : {
-      fprintf(stderr, "Unsupported output %i for xjpeg wrapper.", out);
+      fprintf(stderr, "Unsupported output '%s' for xjpeg wrapper.\n",
+       JPEG_DECODE_OUT_NAMES[out]);
       return EXIT_FAILURE;
     }
   }

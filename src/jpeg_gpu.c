@@ -493,7 +493,8 @@ int main(int argc, char *argv[]) {
             break;
           }
           default : {
-            fprintf(stderr, "Unsupported output %i\n", out);
+            fprintf(stderr, "Unsupported output '%s'.\n",
+             JPEG_DECODE_OUT_NAMES[out]);
             return EXIT_FAILURE;
           }
         }
@@ -734,7 +735,8 @@ int main(int argc, char *argv[]) {
         break;
       }
       default : {
-        fprintf(stderr, "Unsupported output %i\n", out);
+        fprintf(stderr, "Unsupported output '%s'.\n",
+         JPEG_DECODE_OUT_NAMES[out]);
         return EXIT_FAILURE;
       }
     }
@@ -833,7 +835,8 @@ int main(int argc, char *argv[]) {
             break;
           }
           default : {
-            fprintf(stderr, "Unsupported output %i\n", out);
+            fprintf(stderr, "Unsupported output '%s'.\n",
+             JPEG_DECODE_OUT_NAMES[out]);
             return EXIT_FAILURE;
           }
         }

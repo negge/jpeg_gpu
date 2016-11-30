@@ -25,8 +25,11 @@ typedef enum jpeg_decode_out {
   JPEG_DECODE_QUANT,
   JPEG_DECODE_DCT,
   JPEG_DECODE_YUV,
-  JPEG_DECODE_RGB
+  JPEG_DECODE_RGB,
+  JPEG_DECODE_OUT_MAX
 } jpeg_decode_out;
+
+extern const char *JPEG_DECODE_OUT_NAMES[JPEG_DECODE_OUT_MAX];
 
 typedef jpeg_decode_ctx *(*jpeg_decode_alloc_func)(jpeg_info *info);
 typedef int (*jpeg_decode_header_func)(jpeg_decode_ctx *dec,
