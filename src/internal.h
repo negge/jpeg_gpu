@@ -16,8 +16,16 @@ See the License for the specific language governing permissions and limitations
 #if !defined(_internal_H)
 # define _internal_H (1)
 
+#include <math.h>
+
 # define GLJ_MAXI(a, b) ((a) ^ (((a) ^ (b)) & -((b) > (a))))
 # define GLJ_MINI(a, b) ((a) ^ (((b) ^ (a)) & -((b) < (a))))
+# define GLJ_CLAMPI(l, x, u) (GLJ_MAXI(l, GLJ_MINI(x, u)))
+# define GLJ_ABSI(x) GLJ_MAXI(x, -(x))
+
+# define GLJ_MINF(a, b) ((a) < (b) ? (a) : (b))
+# define GLJ_MAXF(a, b) ((a) > (b) ? (a) : (b))
+# define GLJ_ABSF(a) fabs(a)
 
 # define GLJ_ILOG(x) (glj_ilog(x))
 
