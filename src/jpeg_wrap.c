@@ -22,6 +22,7 @@ See the License for the specific language governing permissions and limitations
 #include "internal.h"
 
 const char *JPEG_DECODE_OUT_NAMES[JPEG_DECODE_OUT_MAX] = {
+  "pack",
   "quant",
   "dct",
   "yuv",

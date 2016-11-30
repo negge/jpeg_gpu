@@ -22,6 +22,7 @@ See the License for the specific language governing permissions and limitations
 typedef struct jpeg_decode_ctx jpeg_decode_ctx;
 
 typedef enum jpeg_decode_out {
+  JPEG_DECODE_PACK,
   JPEG_DECODE_QUANT,
   JPEG_DECODE_DCT,
   JPEG_DECODE_YUV,

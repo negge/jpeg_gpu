@@ -335,6 +335,7 @@ static void usage() {
    "                                 xjpeg => project decoder\n"
    "  -o --out <format>              Format software decoder should output\n"
    "                                  and send to the GPU for display.\n"
+   "                                 pack => RLC zero packed and quantized.\n"
    "                                 quant => quantized but de-zigzaged.\n"
    "                                 dct => DCT (12-bit dequantized)\n"
    "                                 yuv (default) => YUV (4:4:4 or 4:2:0)\n"
@@ -395,7 +396,10 @@ int main(int argc, char *argv[]) {
           break;
         }
         case 'o' : {
-          if (strcmp("quant", optarg) == 0) {
+          if (strcmp("pack", optarg) == 0) {
+            out = JPEG_DECODE_PACK;
+          }
+          else if (strcmp("quant", optarg) == 0) {
             out = JPEG_DECODE_QUANT;
           }
           else if (strcmp("dct", optarg) == 0) {

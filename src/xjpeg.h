@@ -134,6 +134,7 @@ struct xjpeg_decode_ctx {
 };
 
 typedef enum xjpeg_decode_out {
+  XJPEG_DECODE_PACK,
   XJPEG_DECODE_QUANT,
   XJPEG_DECODE_DCT,
   XJPEG_DECODE_YUV,
