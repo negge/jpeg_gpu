@@ -335,6 +335,8 @@ static void usage() {
    "                                 xjpeg => project decoder\n"
    "  -o --out <format>              Format software decoder should output\n"
    "                                  and send to the GPU for display.\n"
+   "                                 quant => quantized but de-zigzaged.\n"
+   "                                 dct => DCT (12-bit dequantized)\n"
    "                                 yuv (default) => YUV (4:4:4 or 4:2:0)\n"
    "                                 rgb => RGB (4:4:4)\n"
    "  -d --dump                      Dump jpeg data in the output format.\n"
