@@ -22,6 +22,7 @@ See the License for the specific language governing permissions and limitations
 typedef struct jpeg_quant jpeg_quant;
 
 struct jpeg_quant {
+  int valid;
   unsigned char bits;
   unsigned short tbl[64];
 };

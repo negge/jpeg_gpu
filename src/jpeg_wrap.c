@@ -80,7 +80,8 @@ static int libjpeg_decode_header(libjpeg_decode_ctx *ctx,
   for (i = 0; i < NUM_QUANT_TBLS; i++) {
     JQUANT_TBL *tbl;
     tbl = ctx->cinfo.quant_tbl_ptrs[i];
-    if (tbl != NULL) {
+    headers->quant[i].valid = tbl != NULL;
+    if (headers->quant[i].valid) {
       /* Assume 8 bit quantizers */
       headers->quant[i].bits = 8;
       memcpy(headers->quant[i].tbl, tbl->quantval, 64*sizeof(unsigned short));
@@ -254,7 +255,8 @@ static int xjpeg_decode_header_(xjpeg_decode_ctx *ctx, jpeg_header *headers) {
   headers->restart_interval = ctx->restart_interval;
 
   for (i = 0; i < NQUANT_MAX; i++) {
-    if (ctx->quant[i].valid) {
+    headers->quant[i].valid = ctx->quant[i].valid;
+    if (headers->quant[i].valid) {
       headers->quant[i].bits = ctx->quant[i].bits;
       memcpy(headers->quant[i].tbl, ctx->quant[i].tbl,
        64*sizeof(unsigned short));
