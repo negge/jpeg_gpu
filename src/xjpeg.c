@@ -422,26 +422,25 @@ static void xjpeg_decode_rsi(xjpeg_decode_ctx *ctx) {
 typedef struct xjpeg_mcu xjpeg_mcu;
 
 struct xjpeg_mcu {
-  int nblocks;
-  xjpeg_huff *dc_huff[NCOMPS_MAX*VSAMP_MAX*HSAMP_MAX];
-  xjpeg_huff *ac_huff[NCOMPS_MAX*VSAMP_MAX*HSAMP_MAX];
+  int nblocks[NCOMPS_MAX];
+  xjpeg_huff *dc_huff[NCOMPS_MAX];
+  xjpeg_huff *ac_huff[NCOMPS_MAX];
+  xjpeg_quant *quant[NCOMPS_MAX];
   short dc_pred[NCOMPS_MAX];
   short *coef[NCOMPS_MAX];
 };
 
 static void xjpeg_mcu_init(xjpeg_decode_ctx *ctx, xjpeg_mcu *mcu) {
-  int i, j;
+  int i;
   xjpeg_scan_comp *comp;
-  mcu->nblocks = 0;
   memset(mcu->dc_pred, 0, sizeof(mcu->dc_pred));
   for (i = 0, comp = ctx->scan.comp; i < ctx->scan.ncomps; i++, comp++) {
     xjpeg_comp_info *pi;
     pi = &ctx->frame.comp[i];
-    for (j = 0; j < pi->vsamp*pi->hsamp; j++) {
-      mcu->dc_huff[mcu->nblocks] = &ctx->dc_huff[comp->td];
-      mcu->ac_huff[mcu->nblocks] = &ctx->ac_huff[comp->ta];
-      mcu->nblocks++;
-    }
+    mcu->nblocks[i] = pi->vsamp*pi->hsamp;
+    mcu->dc_huff[i] = &ctx->dc_huff[comp->td];
+    mcu->ac_huff[i] = &ctx->ac_huff[comp->ta];
+    mcu->quant[i] = &ctx->quant[pi->tq];
   }
 }
 
@@ -459,8 +458,8 @@ static void xjpeg_decode_scan(xjpeg_decode_ctx *ctx,
   xjpeg_mcu_init(ctx, &mcu);
   for (mby = 0; mby < ctx->frame.nvmb; mby++) {
     for (mbx = 0; mbx < ctx->frame.nhmb; mbx++) {
-      int i, m;
-      for (i = m = 0; i < ctx->scan.ncomps; i++) {
+      int i;
+      for (i = 0; i < ctx->scan.ncomps; i++) {
         xjpeg_comp_info *pi;
         image_plane *ip;
         int sby;
@@ -468,13 +467,13 @@ static void xjpeg_decode_scan(xjpeg_decode_ctx *ctx,
         pi = &ctx->frame.comp[i];
         ip = plane[i];
         for (sby = 0; sby < pi->vsamp; sby++) {
-          for (sbx = 0; sbx < pi->hsamp; sbx++, m++) {
+          for (sbx = 0; sbx < pi->hsamp; sbx++) {
             short block[64];
             unsigned char symbol;
             short value;
             int j, k;
             memset(block, 0, sizeof(block));
-            XJPEG_DECODE_VLC(ctx, mcu.dc_huff[m], symbol, value);
+            XJPEG_DECODE_VLC(ctx, mcu.dc_huff[i], symbol, value);
             XJPEG_LOG(("dc = %i\n", value));
             mcu.dc_pred[i] += value;
             XJPEG_LOG(("dc_pred = %i\n", pred[i]));
@@ -483,20 +482,20 @@ static void xjpeg_decode_scan(xjpeg_decode_ctx *ctx,
               block[0] = mcu.dc_pred[i];
             }
             else {
-              block[0] = mcu.dc_pred[i]*ctx->quant[pi->tq].tbl[0];
+              block[0] = mcu.dc_pred[i]*mcu.quant[i]->tbl[0];
             }
             do {
-              XJPEG_DECODE_VLC(ctx, mcu.ac_huff[m], symbol, value);
+              XJPEG_DECODE_VLC(ctx, mcu.ac_huff[i], symbol, value);
               if (symbol) {
                 j += (symbol >> 4) + 1;
                 XJPEG_LOG(("j = %i, offset = %i, value = %i, dequant = %i\n", j,
-                 (symbol >> 4) + 1, value, value*ctx->quant[pi->tq].tbl[j]));
+                 (symbol >> 4) + 1, value, value*mcu.quant[i]->tbl[j]));
                 XJPEG_ERROR(ctx, j > 63, "Error indexing outside block.");
                 if (out == XJPEG_DECODE_QUANT) {
                   block[DE_ZIG_ZAG[j]] = value;
                 }
                 else {
-                  block[DE_ZIG_ZAG[j]] = value*ctx->quant[pi->tq].tbl[j];
+                  block[DE_ZIG_ZAG[j]] = value*mcu.quant[i]->tbl[j];
                 }
               }
               else {
