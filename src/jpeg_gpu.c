@@ -456,6 +456,12 @@ int main(int argc, char *argv[]) {
       printf("Image Size         : %ix%i\n", header.width, header.height);
       printf("Bits Per Pixel     : %i\n", header.bits);
       printf("Components         : %i\n", header.ncomps);
+      printf("Minimum Coded Unit : ");
+      for (i = 0; i < header.ncomps; i++) {
+        printf("%s%ix%i", i > 0 ? " " : "", header.comp[i].hsamp,
+         header.comp[i].vsamp);
+      }
+      printf("\n");
       printf("Restart Interval   : %i\n", header.restart_interval);
       for (i = 0; i < NQUANT_MAX; i++) {
         if (header.quant[i].valid) {
