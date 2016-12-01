@@ -237,18 +237,18 @@ static void xjpeg_decode_dqt(xjpeg_decode_ctx *ctx) {
     XJPEG_LOG(("Reading Quantization Table %i (%i-bit)\n", tq, quant->bits));
     if (pq) {
       for (i = 0; i < 64; i++) {
-        XJPEG_DECODE_SHORT(ctx, quant->tbl[i]);
+        XJPEG_DECODE_SHORT(ctx, quant->tbl[DE_ZIG_ZAG[i]]);
       }
     }
     else {
       for (i = 0; i < 64; i++) {
-        XJPEG_DECODE_BYTE(ctx, quant->tbl[i]);
+        XJPEG_DECODE_BYTE(ctx, quant->tbl[DE_ZIG_ZAG[i]]);
       }
     }
     len -= 65 + 64*pq;
 #if LOGGING_ENABLED
     for (i = 1; i <= 64; i++) {
-      XJPEG_LOG(("%3i,%s", quant->tbl[ZIG_ZAG[i - 1]], i & 0x7 ? " " : "\n"));
+      XJPEG_LOG(("%3i,%s", quant->tbl[i - 1], i & 0x7 ? " " : "\n"));
     }
 #endif
   }
@@ -471,7 +471,7 @@ static void xjpeg_decode_scan(xjpeg_decode_ctx *ctx,
             short block[64];
             unsigned char symbol;
             short value;
-            int j, k;
+            int j;
             memset(block, 0, sizeof(block));
             XJPEG_DECODE_VLC(ctx, mcu.dc_huff[i], symbol, value);
             XJPEG_LOG(("dc = %i\n", value));
@@ -495,7 +495,7 @@ static void xjpeg_decode_scan(xjpeg_decode_ctx *ctx,
                   block[DE_ZIG_ZAG[j]] = value;
                 }
                 else {
-                  block[DE_ZIG_ZAG[j]] = value*mcu.quant[i]->tbl[j];
+                  block[DE_ZIG_ZAG[j]] = value*mcu.quant[i]->tbl[DE_ZIG_ZAG[j]];
                 }
               }
               else {
@@ -528,6 +528,7 @@ static void xjpeg_decode_scan(xjpeg_decode_ctx *ctx,
               case XJPEG_DECODE_YUV : {
                 unsigned char *data;
                 short *b;
+                int k;
                 od_bin_idct8x8(block, 8, block, 8);
                 data = ip->data +
                  ((mby*pi->vsamp + sby)*ip->ystride << 3) +

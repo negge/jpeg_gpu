@@ -452,7 +452,7 @@ int main(int argc, char *argv[]) {
     dec = (*vtbl.decode_alloc)(&info);
     (*vtbl.decode_header)(dec, &header);
     if (head) {
-      int i, j, k;
+      int i, j;
       printf("Image Size         : %ix%i\n", header.width, header.height);
       printf("Bits Per Pixel     : %i\n", header.bits);
       printf("Components         : %i\n", header.ncomps);
@@ -467,11 +467,8 @@ int main(int argc, char *argv[]) {
       for (i = 0; i < NQUANT_MAX; i++) {
         if (header.quant[i].valid) {
           printf("Quant Table %i Bits : %i\n", i, header.quant[i].bits);
-          for (j = 0; j < 8; j++) {
-            for (k = 0; k < 8; k++) {
-              printf("%4i", header.quant[i].tbl[j*8 +k]);
-            }
-            printf("\n");
+          for (j = 1; j <= 64; j++) {
+            printf("%4i%s", header.quant[i].tbl[j - 1], j & 0x7 ? "" : "\n");
           }
         }
       }
