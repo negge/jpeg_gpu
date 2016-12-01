@@ -19,6 +19,19 @@ See the License for the specific language governing permissions and limitations
 # define NCOMPS_MAX (3)
 # define NQUANT_MAX (4)
 
+typedef enum jpeg_subsamp {
+  JPEG_SUBSAMP_UNKNOWN,
+  JPEG_SUBSAMP_444,
+  JPEG_SUBSAMP_422,
+  JPEG_SUBSAMP_420,
+  JPEG_SUBSAMP_440,
+  JPEG_SUBSAMP_411,
+  JPEG_SUBSAMP_MONO,
+  JPEG_SUBSAMP_MAX
+} jpeg_subsamp;
+
+extern const char *JPEG_SUBSAMP_NAMES[JPEG_SUBSAMP_MAX];
+
 typedef struct jpeg_quant jpeg_quant;
 
 struct jpeg_quant {
@@ -44,6 +57,7 @@ struct jpeg_header {
   int width;
   int height;
   int ncomps;
+  jpeg_subsamp subsamp;
   int restart_interval;
   jpeg_component comp[NCOMPS_MAX];
   jpeg_quant quant[NQUANT_MAX];

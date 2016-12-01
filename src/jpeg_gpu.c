@@ -456,6 +456,7 @@ int main(int argc, char *argv[]) {
       printf("Image Size         : %ix%i\n", header.width, header.height);
       printf("Bits Per Pixel     : %i\n", header.bits);
       printf("Components         : %i\n", header.ncomps);
+      printf("Chroma Subsampling : %s\n", JPEG_SUBSAMP_NAMES[header.subsamp]);
       printf("Minimum Coded Unit : ");
       for (i = 0; i < header.ncomps; i++) {
         printf("%s%ix%i", i > 0 ? " " : "", header.comp[i].hsamp,

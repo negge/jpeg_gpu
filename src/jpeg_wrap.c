@@ -29,6 +29,28 @@ const char *JPEG_DECODE_OUT_NAMES[JPEG_DECODE_OUT_MAX] = {
   "rgb",
 };
 
+static jpeg_subsamp decode_subsamp(jpeg_header *headers) {
+  if (headers->ncomps == 1) {
+    return JPEG_SUBSAMP_MONO;
+  }
+  /* If there is more than one component (color plane), assume both chroma
+      planes have the same sampling (MCU size).
+     This code also assumes that luma sampling is always greater than or
+      equal to the chroma sampling. */
+  else {
+    int xdec;
+    int ydec;
+    xdec = GLJ_ILOG(headers->comp[0].hsamp) - GLJ_ILOG(headers->comp[1].hsamp);
+    ydec = GLJ_ILOG(headers->comp[0].vsamp) - GLJ_ILOG(headers->comp[1].vsamp);
+    if (xdec == 0 && ydec == 0) return JPEG_SUBSAMP_444;
+    if (xdec == 1 && ydec == 0) return JPEG_SUBSAMP_422;
+    if (xdec == 1 && ydec == 1) return JPEG_SUBSAMP_420;
+    if (xdec == 0 && ydec == 1) return JPEG_SUBSAMP_440;
+    if (xdec == 2 && ydec == 0) return JPEG_SUBSAMP_411;
+  }
+  return JPEG_SUBSAMP_UNKNOWN;
+}
+
 typedef struct libjpeg_decode_ctx libjpeg_decode_ctx;
 
 struct libjpeg_decode_ctx {
@@ -103,6 +125,8 @@ static int libjpeg_decode_header(libjpeg_decode_ctx *ctx,
     }
     comp->quant = &headers->quant[info->quant_tbl_no];
   }
+
+  headers->subsamp = decode_subsamp(headers);
 
   return EXIT_SUCCESS;
 }
@@ -278,6 +302,8 @@ static int xjpeg_decode_header_(xjpeg_decode_ctx *ctx, jpeg_header *headers) {
     }
     comp->quant = &headers->quant[info->tq];
   }
+
+  headers->subsamp = decode_subsamp(headers);
 
   return EXIT_SUCCESS;
 }

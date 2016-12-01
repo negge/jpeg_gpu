@@ -18,6 +18,16 @@ See the License for the specific language governing permissions and limitations
 #include <string.h>
 #include "jpeg_info.h"
 
+const char *JPEG_SUBSAMP_NAMES[JPEG_SUBSAMP_MAX] = {
+  "Unknown",
+  "4:4:4",
+  "4:2:2",
+  "4:2:0",
+  "4:4:0",
+  "4:1:1",
+  "Mono",
+};
+
 int jpeg_info_init(jpeg_info *info, const char *name) {
   FILE *fp;
   int size;
