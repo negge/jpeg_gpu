@@ -94,6 +94,7 @@ void main() {
       y[7-i]=texelFetch(h_high,ivec2(u,v+i),0)[s&3];
     }
   }
+  y[0] += 0.5;
   glj_real_idct8(x, y);
   v_low=ivec4(x[0],x[1],x[2],x[3]);
   v_high=ivec4(x[4],x[5],x[6],x[7]);
