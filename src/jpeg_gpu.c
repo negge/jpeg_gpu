@@ -133,7 +133,9 @@ typedef enum texture_format {
   U8_1 = 0,
   U8_3 = 1,
   I16_1 = 2,
-  I16_4 = 3
+  I16_4 = 3,
+  F32_1 = 4,
+  F32_4 = 5
 } texture_format;
 
 typedef struct texture_format_info texture_format_info;
@@ -148,7 +150,9 @@ const texture_format_info TEXTURE_FORMATS[] = {
   { GL_R8UI,    GL_RED_INTEGER,  GL_UNSIGNED_BYTE },
   { GL_RGB8UI,  GL_RGB_INTEGER,  GL_UNSIGNED_BYTE },
   { GL_R16I,    GL_RED_INTEGER,  GL_SHORT },
-  { GL_RGBA16I, GL_RGBA_INTEGER, GL_SHORT }
+  { GL_RGBA16I, GL_RGBA_INTEGER, GL_SHORT },
+  { GL_R32F,    GL_RED,          GL_FLOAT },
+  { GL_RGBA32F, GL_RGBA,         GL_FLOAT },
 };
 
 static GLint create_texture(GLuint *tex, int id, int width, int height,
@@ -230,6 +234,31 @@ static void print_texture(GLuint tex, int width, int height,
       for (j = 0; j < height; j++) {
         for (i = 0; i < width*4; i++) {
           printf("%s%4i%s", i%4 == 0 ? "(" : "", pixels[j*width*4 + i],
+           (i + 1)%4 == 0 ? ") " : ", ");
+        }
+        printf("\n");
+      }
+      break;
+    }
+    case F32_1 : {
+      float *pixels;
+      glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_FLOAT, buf);
+      pixels = buf;
+      for (j = 0; j < height; j++) {
+        for (i = 0; i < width; i++) {
+          printf("%s%f", i > 0 ? ", " : "", pixels[j*width + i]);
+        }
+        printf("\n");
+      }
+      break;
+    }
+    case F32_4 : {
+      float *pixels;
+      glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, buf);
+      pixels = buf;
+      for (j = 0; j < height; j++) {
+        for (i = 0; i < width*4; i++) {
+          printf("%s%f%s", i%4 == 0 ? "(" : "", pixels[j*width*4 + i],
            (i + 1)%4 == 0 ? ") " : ", ");
         }
         printf("\n");
