@@ -145,10 +145,10 @@ static int libjpeg_decode_image(libjpeg_decode_ctx *ctx, image *img,
         JDIMENSION r, bx;
         info = &ctx->cinfo.comp_info[i];
         coef = img->plane[i].coef;
-        for (r = 0; r < info->height_in_blocks; r += info->h_samp_factor) {
+        for (r = 0; r < info->height_in_blocks; r += info->v_samp_factor) {
           buf = (ctx->cinfo.mem->access_virt_barray)
-           ((j_common_ptr)&ctx->cinfo, coeffs[i], r, info->h_samp_factor, 0);
-          for (j = 0; j < info->h_samp_factor; j++) {
+           ((j_common_ptr)&ctx->cinfo, coeffs[i], r, info->v_samp_factor, 0);
+          for (j = 0; j < info->v_samp_factor; j++) {
             for (bx = 0; bx < info->width_in_blocks; bx++) {
               memcpy(coef, buf[j][bx], sizeof(JBLOCK));
               coef += 64;
