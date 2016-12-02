@@ -170,7 +170,12 @@ static int libjpeg_decode_image(libjpeg_decode_ctx *ctx, image *img,
 
       ctx->cinfo.raw_data_out = TRUE;
       ctx->cinfo.do_fancy_upsampling = FALSE;
-      ctx->cinfo.dct_method = JDCT_IFAST;
+      /* JPEG optimization tools like mozjpeg (based on libjpeg) assume a
+          specific DCT implementation when doing rate-distortion trellis
+          optimization for coefficient coding.
+         The JDCT_ISLOW is the default DCT method in mozjpeg and is also the
+          most accurate. */
+      ctx->cinfo.dct_method = JDCT_ISLOW;
 
       jpeg_start_decompress(&ctx->cinfo);
 
@@ -198,7 +203,12 @@ static int libjpeg_decode_image(libjpeg_decode_ctx *ctx, image *img,
       JSAMPROW row_pointer[1];
 
       ctx->cinfo.do_fancy_upsampling = FALSE;
-      ctx->cinfo.dct_method = JDCT_IFAST;
+      /* JPEG optimization tools like mozjpeg (based on libjpeg) assume a
+          specific DCT implementation when doing rate-distortion trellis
+          optimization for coefficient coding.
+         The JDCT_ISLOW is the default DCT method in mozjpeg and is also the
+          most accurate. */
+      ctx->cinfo.dct_method = JDCT_ISLOW;
 
       jpeg_start_decompress(&ctx->cinfo);
 
