@@ -7,7 +7,6 @@ void main() {
   int s=int(tex_coord.s);
   int t=int(tex_coord.t);
   float y;
-  float v;
   if ((t&0x4)==0) {
     y=float(texelFetch(low, ivec2(s,t>>3),0)[t&3])+128;
   }
