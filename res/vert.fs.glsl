@@ -1,16 +1,5 @@
 #version 140
 
-float GLJ_REAL_IDCT8_SCALES[8] = float[](
-  0.35355339059327376220042218105242,
-  0.49039264020161522456309111806712,
-  0.46193976625564337806409159469839,
-  0.41573480615127261853939418880895,
-  0.35355339059327376220042218105242,
-  0.27778511650980111237141540697427,
-  0.19134171618254488586422999201520,
-  0.097545161008064133924142434238511
-);
-
 void glj_real_idct8(out float x[8], const float y[8]) {
   float t0;
   float t1;
@@ -97,12 +86,12 @@ void main() {
   float y[8];
   if ((s&0x4)==0) {
     for (i = 0; i < 8; i++) {
-      y[7-i]=GLJ_REAL_IDCT8_SCALES[7-i]*texelFetch(h_low,ivec2(u,v+i),0)[s&3];
+      y[7-i]=texelFetch(h_low,ivec2(u,v+i),0)[s&3];
     }
   }
   else {
     for (i = 0; i < 8; i++) {
-      y[7-i]=GLJ_REAL_IDCT8_SCALES[7-i]*texelFetch(h_high,ivec2(u,v+i),0)[s&3];
+      y[7-i]=texelFetch(h_high,ivec2(u,v+i),0)[s&3];
     }
   }
   glj_real_idct8(x, y);
