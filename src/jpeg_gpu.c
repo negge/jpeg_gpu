@@ -604,7 +604,101 @@ int main(int argc, char *argv[]) {
     printf("Renderer: %s\n",glGetString(GL_RENDERER));
 
     switch (out) {
-      case JPEG_DECODE_QUANT :
+      case JPEG_DECODE_QUANT : {
+        int width;
+        int height;
+        width = img.plane[0].width;
+        height = 0;
+        for (i = 0; i < img.nplanes; i++) {
+          height += img.plane[i].cstride;
+        }
+        if (!setup_shader(&prog[0], TEX_VS, HORZ_FS)) {
+          return EXIT_FAILURE;
+        }
+        if (!create_texture(&tex[0], 0, width*8, height, I16_1)) {
+          return EXIT_FAILURE;
+        }
+        if (!bind_int1(prog[0], "tex", 0)) {
+          return EXIT_FAILURE;
+        }
+        if (!create_tex_rect(&vao[0], &vbo[0], prog[0], width/8, height*8)) {
+          return EXIT_FAILURE;
+        }
+        if (!create_texture(&tex[1], 1, width/8, height*8, F32_4)) {
+          return EXIT_FAILURE;
+        }
+        if (!create_texture(&tex[2], 2, width/8, height*8, F32_4)) {
+          return EXIT_FAILURE;
+        }
+        if (!setup_shader(&prog[1], TEX_VS, VERT_FS)) {
+          return EXIT_FAILURE;
+        }
+        if (!bind_int1(prog[1], "h_low", 1)) {
+           return EXIT_FAILURE;
+        }
+        if (!bind_int1(prog[1], "h_high", 2)) {
+           return EXIT_FAILURE;
+        }
+        if (!create_tex_rect(&vao[1], &vbo[1], prog[1], width, height)) {
+          return EXIT_FAILURE;
+        }
+        if (!create_texture(&tex[3], 3, width, height, I16_4)) {
+          return EXIT_FAILURE;
+        }
+        if (!create_texture(&tex[4], 4, width, height, I16_4)) {
+          return EXIT_FAILURE;
+        }
+        switch (img.nplanes) {
+          case 1 : {
+            if (!setup_shader(&prog[2], TEX_VS, UNGREY_FS)) {
+              return EXIT_FAILURE;
+            }
+            break;
+          }
+          case 3 : {
+            if (!setup_shader(&prog[2], TEX_VS, UNYUV_FS)) {
+              return EXIT_FAILURE;
+            }
+            if (!bind_int1(prog[2], "y_width", img.plane[0].width)) {
+              return EXIT_FAILURE;
+            }
+            if (!bind_int1(prog[2], "y_height", img.plane[0].height)) {
+              return EXIT_FAILURE;
+            }
+            if (!bind_int1(prog[2], "u_xdec", img.plane[1].xdec)) {
+              return EXIT_FAILURE;
+            }
+            if (!bind_int1(prog[2], "u_ydec", img.plane[1].ydec)) {
+              return EXIT_FAILURE;
+            }
+            if (!bind_int1(prog[2], "v_xdec", img.plane[2].xdec)) {
+              return EXIT_FAILURE;
+            }
+            if (!bind_int1(prog[2], "v_ydec", img.plane[2].ydec)) {
+              return EXIT_FAILURE;
+            }
+            break;
+          }
+        }
+        if (!bind_int1(prog[2], "low", 3)) {
+           return EXIT_FAILURE;
+        }
+        if (!bind_int1(prog[2], "high", 4)) {
+           return EXIT_FAILURE;
+        }
+        if (!create_tex_rect(&vao[2], &vbo[2], prog[2], img.width,
+         img.height)) {
+          return EXIT_FAILURE;
+        }
+        glBindFragDataLocation(prog[2], 0, "color");
+        if (!create_framebuffer(&fbo[0], 2, 0, &tex[1])) {
+          return EXIT_FAILURE;
+        }
+        if (!create_framebuffer(&fbo[1], 2, 2, &tex[3])) {
+          return EXIT_FAILURE;
+        }
+        break;
+      }
       case JPEG_DECODE_DCT : {
         int width;
         int height;
@@ -821,7 +915,40 @@ int main(int argc, char *argv[]) {
 
       if (!no_gpu) {
         switch (out) {
-          case JPEG_DECODE_QUANT :
+          case JPEG_DECODE_QUANT : {
+            int width;
+            int height;
+            width = img.plane[0].width;
+            height = 0;
+            for (i = 0; i < img.nplanes; i++) {
+              height += img.plane[i].cstride;
+            }
+            /* Update the texture with DCT coefficients */
+            update_texture(tex[0], 0, width*8, height, I16_1, img.coef);
+            /* Perform the horizontal IDCT */
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo[0]);
+            glViewport(0, 0, width/8, height*8);
+            glUseProgram(prog[0]);
+            glBindVertexArray(vao[0]);
+            glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
+            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+            /* Perform the vertical IDCT */
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo[1]);
+            glViewport(0, 0, width, height);
+            glUseProgram(prog[1]);
+            glBindVertexArray(vao[1]);
+            glBindBuffer(GL_ARRAY_BUFFER, vbo[1]);
+            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+            /* Unpack the coefficients and display them */
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glViewport(0, 0, window_width, window_height);
+            glUseProgram(prog[2]);
+            glBindVertexArray(vao[2]);
+            glBindBuffer(GL_ARRAY_BUFFER, vbo[2]);
+            glClear(GL_COLOR_BUFFER_BIT);
+            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+            break;
+          }
           case JPEG_DECODE_DCT : {
             int width;
             int height;
