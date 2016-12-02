@@ -529,7 +529,7 @@ static void xjpeg_decode_scan(xjpeg_decode_ctx *ctx,
                 unsigned char *data;
                 short *b;
                 int k;
-                od_bin_idct8x8(block, 8, block, 8);
+                glj_real_idct8x8(block, 8, block, 8);
                 data = ip->data +
                  ((mby*pi->vsamp + sby)*ip->ystride << 3) +
                  ((mbx*pi->hsamp + sbx)*ip->xstride << 3);
