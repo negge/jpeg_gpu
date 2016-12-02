@@ -1,126 +1,82 @@
 #version 140
 
-#define GLJ_COEFF_SHIFT (4)
+float GLJ_REAL_IDCT8_SCALES[8] = float[](
+  0.35355339059327376220042218105242,
+  0.49039264020161522456309111806712,
+  0.46193976625564337806409159469839,
+  0.41573480615127261853939418880895,
+  0.35355339059327376220042218105242,
+  0.27778511650980111237141540697427,
+  0.19134171618254488586422999201520,
+  0.097545161008064133924142434238511
+);
 
-#define GLJ_UNBIASED_RSHIFT(_a, _b) \
- (((_a) < 0 ? ((_a) + ((1 << (_b)) - 1)) : (_a)) >> (_b))
-
-#define GLJ_DCT_RSHIFT(_a, _b) GLJ_UNBIASED_RSHIFT(_a, _b)
-
-#define GLJ_IDCT_2(t0, t1) \
-  /* Embedded 2-point orthonormal Type-II iDCT. */ \
-  do { \
-    /* 3393/8192 ~= Tan[pi/8] ~= 0.414213562373095 */ \
-    t0 += (t1*3393 + 4096) >> 13; \
-    /* 5793/8192 ~= Sin[pi/4] ~= 0.707106781186547 */ \
-    t1 -= (t0*5793 + 4096) >> 13; \
-    /* 13573/32768 ~= Tan[pi/8] ~= 0.414213562373095 */ \
-    t0 += (t1*13573 + 16384) >> 15; \
-  } \
-  while (false)
-
-#define GLJ_IDST_2(t0, t1) \
-  /* Embedded 2-point orthonormal Type-IV iDST. */ \
-  do { \
-    /* 10947/16384 ~= Tan[3*Pi/16]) ~= 0.668178637919299 */ \
-    t0 += (t1*10947 + 8192) >> 14; \
-    /* 473/512 ~= Sin[3*Pi/8] ~= 0.923879532511287 */ \
-    t1 -= (t0*473 + 256) >> 9; \
-    /* 10947/16384 ~= Tan[3*Pi/16] ~= 0.668178637919299 */ \
-    t0 += (t1*10947 + 8192) >> 14; \
-  } \
-  while (false)
-
-#define GLJ_IDCT_4_ASYM(t0, t2, t1, t1h, t3, t3h) \
-  /* Embedded 4-point asymmetric Type-II iDCT. */ \
-  do { \
-    GLJ_IDST_2(t3, t2); \
-    GLJ_IDCT_2(t0, t1); \
-    t1 = t2 - t1; \
-    t1h = GLJ_DCT_RSHIFT(t1, 1); \
-    t2 = t1h - t2; \
-    t3 = t0 - t3; \
-    t3h = GLJ_DCT_RSHIFT(t3, 1); \
-    t0 -= t3h; \
-  } \
-  while (false)
-
-#define GLJ_IDST_4_ASYM(t0, t0h, t2, t1, t3) \
-  /* Embedded 4-point asymmetric Type-IV iDST. */ \
-  do { \
-    /* 8757/16384 ~= Tan[5*Pi/32] ~= 0.534511135950792 */ \
-    t1 -= (t2*8757 + 8192) >> 14; \
-    /* 6811/8192 ~= Sin[5*Pi/16] ~= 0.831469612302545 */ \
-    t2 += (t1*6811 + 4096) >> 13; \
-    /* 8757/16384 ~= Tan[5*Pi/32] ~= 0.534511135950792 */ \
-    t1 -= (t2*8757 + 8192) >> 14; \
-    /* 6723/8192 ~= Tan[7*Pi/32] ~= 0.820678790828660 */ \
-    t3 -= (t0*6723 + 4096) >> 13; \
-    /* 8035/8192 ~= Sin[7*Pi/16] ~= 0.980785280403230 */ \
-    t0 += (t3*8035 + 4096) >> 13; \
-    /* 6723/8192 ~= Tan[7*Pi/32] ~= 0.820678790828660 */ \
-    t3 -= (t0*6723 + 4096) >> 13; \
-    t0 += t2; \
-    t0h = GLJ_DCT_RSHIFT(t0, 1); \
-    t2 = t0h - t2; \
-    t1 += t3; \
-    t3 -= GLJ_DCT_RSHIFT(t1, 1); \
-    /* -19195/32768 ~= Tan[Pi/8] - Tan[Pi/4] ~= -0.585786437626905 */ \
-    t1 -= (t2*19195 + 16384) >> 15; \
-    /* 11585/16384 ~= Sin[Pi/4] ~= 0.707106781186548 */ \
-    t2 -= (t1*11585 + 8192) >> 14; \
-    /* 7489/8192 ~= Tan[Pi/8] + Tan[Pi/4]/2 ~= 0.914213562373095 */ \
-    t1 += (t2*7489 + 4096) >> 13; \
-  } \
-  while (false)
-
-#define GLJ_IDCT_8(r0, r4, r2, r6, r1, r5, r3, r7) \
-  /* Embedded 8-point orthonormal Type-II iDCT. */ \
-  do { \
-    int r1h; \
-    int r3h; \
-    int r5h; \
-    int r7h; \
-    GLJ_IDST_4_ASYM(r7, r7h, r5, r6, r4); \
-    GLJ_IDCT_4_ASYM(r0, r2, r1, r1h, r3, r3h); \
-    r0 += r7h; \
-    r7 = r0 - r7; \
-    r6 = r1h - r6; \
-    r1 -= r6; \
-    r5h = GLJ_DCT_RSHIFT(r5, 1); \
-    r2 += r5h; \
-    r5 = r2 - r5; \
-    r4 = r3h - r4; \
-    r3 -= r4; \
-  } \
-  while (false)
-
-void od_bin_idct8(out int x[8], const int y[8]) {
-  int t0;
-  int t1;
-  int t2;
-  int t3;
-  int t4;
-  int t5;
-  int t6;
-  int t7;
-  t0 = y[0] << GLJ_COEFF_SHIFT;
-  t4 = y[1] << GLJ_COEFF_SHIFT;
-  t2 = y[2] << GLJ_COEFF_SHIFT;
-  t6 = y[3] << GLJ_COEFF_SHIFT;
-  t1 = y[4] << GLJ_COEFF_SHIFT;
-  t5 = y[5] << GLJ_COEFF_SHIFT;
-  t3 = y[6] << GLJ_COEFF_SHIFT;
-  t7 = y[7] << GLJ_COEFF_SHIFT;
-  GLJ_IDCT_8(t0, t4, t2, t6, t1, t5, t3, t7);
-  x[0] = GLJ_DCT_RSHIFT(t0, GLJ_COEFF_SHIFT);
-  x[1] = GLJ_DCT_RSHIFT(t1, GLJ_COEFF_SHIFT);
-  x[2] = GLJ_DCT_RSHIFT(t2, GLJ_COEFF_SHIFT);
-  x[3] = GLJ_DCT_RSHIFT(t3, GLJ_COEFF_SHIFT);
-  x[4] = GLJ_DCT_RSHIFT(t4, GLJ_COEFF_SHIFT);
-  x[5] = GLJ_DCT_RSHIFT(t5, GLJ_COEFF_SHIFT);
-  x[6] = GLJ_DCT_RSHIFT(t6, GLJ_COEFF_SHIFT);
-  x[7] = GLJ_DCT_RSHIFT(t7, GLJ_COEFF_SHIFT);
+void glj_real_idct8(out float x[8], const float y[8]) {
+  float t0;
+  float t1;
+  float t2;
+  float t3;
+  float t4;
+  float t5;
+  float t6;
+  float t7;
+  float u0;
+  float u1;
+  float u2;
+  float u3;
+  float u4;
+  float u5;
+  float u6;
+  float u7;
+  float u8;
+  t0 = y[0];
+  u4 = y[1];
+  t2 = y[2];
+  u6 = y[3];
+  t1 = y[4];
+  u5 = y[5];
+  t3 = y[6];
+  u7 = y[7];
+  /* Embedded scaled inverse 4-point Type-II DCT */
+  u0 = t0 + t1;
+  u1 = t0 - t1;
+  u3 = t2 + t3;
+  u2 = (t2 - t3)*1.4142135623730950488016887242097 - u3;
+  t0 = u0 + u3;
+  t3 = u0 - u3;
+  t1 = u1 + u2;
+  t2 = u1 - u2;
+  /* Embedded scaled inverse 4-point Type-IV DST */
+  t5 = u5 + u6;
+  t6 = u5 - u6;
+  t7 = u4 + u7;
+  t4 = u4 - u7;
+  u7 = t7 + t5;
+  u5 = (t7 - t5)*1.4142135623730950488016887242097;
+  u8 = (t4 + t6)*1.8477590650225735122563663787936;
+  u4 = u8 - t4*1.0823922002923939687994464107328;
+  u6 = u8 - t6*2.6131259297527530557132863468544;
+  t7 = u7;
+  t6 = t7 - u6;
+  t5 = t6 + u5;
+  t4 = t5 - u4;
+  /* Butterflies */
+  u0 = t0 + t7;
+  u7 = t0 - t7;
+  u6 = t1 + t6;
+  u1 = t1 - t6;
+  u2 = t2 + t5;
+  u5 = t2 - t5;
+  u4 = t3 + t4;
+  u3 = t3 - t4;
+  x[0] = u0;
+  x[1] = u1;
+  x[2] = u2;
+  x[3] = u3;
+  x[4] = u4;
+  x[5] = u5;
+  x[6] = u6;
+  x[7] = u7;
 }
 
 in vec2 tex_coord;
@@ -128,8 +84,8 @@ in vec2 tex_coord;
 out ivec4 v_low;
 out ivec4 v_high;
 
-uniform isampler2D h_low;
-uniform isampler2D h_high;
+uniform sampler2D h_low;
+uniform sampler2D h_high;
 
 void main() {
   int s=int(tex_coord.s);
@@ -137,19 +93,19 @@ void main() {
   int u=s>>3;
   int v=t<<3;
   int i;
-  int x[8];
-  int y[8];
+  float x[8];
+  float y[8];
   if ((s&0x4)==0) {
     for (i = 0; i < 8; i++) {
-      y[7-i]=texelFetch(h_low,ivec2(u,v+i),0)[s&3];
+      y[7-i]=GLJ_REAL_IDCT8_SCALES[7-i]*texelFetch(h_low,ivec2(u,v+i),0)[s&3];
     }
   }
   else {
     for (i = 0; i < 8; i++) {
-      y[7-i]=texelFetch(h_high,ivec2(u,v+i),0)[s&3];
+      y[7-i]=GLJ_REAL_IDCT8_SCALES[7-i]*texelFetch(h_high,ivec2(u,v+i),0)[s&3];
     }
   }
-  od_bin_idct8(x, y);
+  glj_real_idct8(x, y);
   v_low=ivec4(x[0],x[1],x[2],x[3]);
   v_high=ivec4(x[4],x[5],x[6],x[7]);
 }

@@ -625,10 +625,10 @@ int main(int argc, char *argv[]) {
         if (!create_tex_rect(&vao[0], &vbo[0], prog[0], width/8, height*8)) {
           return EXIT_FAILURE;
         }
-        if (!create_texture(&tex[1], 1, width/8, height*8, I16_4)) {
+        if (!create_texture(&tex[1], 1, width/8, height*8, F32_4)) {
           return EXIT_FAILURE;
         }
-        if (!create_texture(&tex[2], 2, width/8, height*8, I16_4)) {
+        if (!create_texture(&tex[2], 2, width/8, height*8, F32_4)) {
           return EXIT_FAILURE;
         }
         if (!setup_shader(&prog[1], TEX_VS, VERT_FS)) {
