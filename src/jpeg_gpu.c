@@ -27,7 +27,8 @@ See the License for the specific language governing permissions and limitations
 
 #define NAME "jpeg_gpu"
 
-#define NTEXTS_MAX (5)
+#define NBUFFS_MAX (1)
+#define NTEXTS_MAX (6)
 #define NPROGS_MAX (3)
 
 typedef struct vertex vertex;
@@ -587,6 +588,7 @@ int main(int argc, char *argv[]) {
   {
     jpeg_decode_ctx *dec;
     GLFWwindow *window;
+    GLuint buf[NBUFFS_MAX];
     GLuint tex[NTEXTS_MAX];
     GLuint fbo[NPROGS_MAX];
     GLuint prog[NPROGS_MAX];
@@ -635,40 +637,59 @@ int main(int argc, char *argv[]) {
         for (i = 0; i < img.nplanes; i++) {
           height += img.plane[i].cstride;
         }
-        if (!setup_shader(&prog[0], TEX_VS, HORZ_FS)) {
+        switch (img.nplanes) {
+          case 1 : {
+            if (!setup_shader(&prog[0], TEX_VS, HORZ_QUANT_GREY_FS)) {
+              return EXIT_FAILURE;
+            }
+            break;
+          }
+          default : {
+            if (!setup_shader(&prog[0], TEX_VS, HORZ_FS)) {
+              return EXIT_FAILURE;
+            }
+          }
+        }
+        if (!create_buffer(&buf[0], 64*sizeof(float))) {
           return EXIT_FAILURE;
         }
-        if (!create_texture(&tex[0], 0, width*8, height, I16_1)) {
+        if (!create_texture_buffer(&tex[0], 0, buf[0], F32_1)) {
           return EXIT_FAILURE;
         }
-        if (!bind_int1(prog[0], "tex", 0)) {
+        if (!create_texture(&tex[1], 1, width*8, height, I16_1)) {
+          return EXIT_FAILURE;
+        }
+        if (!bind_int1(prog[0], "quant", 0)) {
+          return EXIT_FAILURE;
+        }
+        if (!bind_int1(prog[0], "tex", 1)) {
           return EXIT_FAILURE;
         }
         if (!create_tex_rect(&vao[0], &vbo[0], prog[0], width/8, height*8)) {
           return EXIT_FAILURE;
         }
-        if (!create_texture(&tex[1], 1, width/8, height*8, F32_4)) {
+        if (!create_texture(&tex[2], 2, width/8, height*8, F32_4)) {
           return EXIT_FAILURE;
         }
-        if (!create_texture(&tex[2], 2, width/8, height*8, F32_4)) {
+        if (!create_texture(&tex[3], 3, width/8, height*8, F32_4)) {
           return EXIT_FAILURE;
         }
         if (!setup_shader(&prog[1], TEX_VS, VERT_FS)) {
           return EXIT_FAILURE;
         }
-        if (!bind_int1(prog[1], "h_low", 1)) {
+        if (!bind_int1(prog[1], "h_low", 2)) {
            return EXIT_FAILURE;
         }
-        if (!bind_int1(prog[1], "h_high", 2)) {
+        if (!bind_int1(prog[1], "h_high", 3)) {
            return EXIT_FAILURE;
         }
         if (!create_tex_rect(&vao[1], &vbo[1], prog[1], width, height)) {
           return EXIT_FAILURE;
         }
-        if (!create_texture(&tex[3], 3, width, height, I16_4)) {
+        if (!create_texture(&tex[4], 4, width, height, I16_4)) {
           return EXIT_FAILURE;
         }
-        if (!create_texture(&tex[4], 4, width, height, I16_4)) {
+        if (!create_texture(&tex[5], 5, width, height, I16_4)) {
           return EXIT_FAILURE;
         }
         switch (img.nplanes) {
@@ -703,10 +724,10 @@ int main(int argc, char *argv[]) {
             break;
           }
         }
-        if (!bind_int1(prog[2], "low", 3)) {
+        if (!bind_int1(prog[2], "low", 4)) {
            return EXIT_FAILURE;
         }
-        if (!bind_int1(prog[2], "high", 4)) {
+        if (!bind_int1(prog[2], "high", 5)) {
            return EXIT_FAILURE;
         }
         if (!create_tex_rect(&vao[2], &vbo[2], prog[2], img.width,
@@ -714,10 +735,10 @@ int main(int argc, char *argv[]) {
           return EXIT_FAILURE;
         }
         glBindFragDataLocation(prog[2], 0, "color");
-        if (!create_framebuffer(&fbo[0], 2, 0, &tex[1])) {
+        if (!create_framebuffer(&fbo[0], 2, 0, &tex[2])) {
           return EXIT_FAILURE;
         }
-        if (!create_framebuffer(&fbo[1], 2, 2, &tex[3])) {
+        if (!create_framebuffer(&fbo[1], 2, 2, &tex[4])) {
           return EXIT_FAILURE;
         }
         break;
@@ -944,8 +965,18 @@ int main(int argc, char *argv[]) {
             for (i = 0; i < img.nplanes; i++) {
               height += img.plane[i].cstride;
             }
+            switch (img.nplanes) {
+              case 1 : {
+                float quant[64];
+                for (i = 0; i < 64; i++) {
+                  quant[i] = header.quant[0].tbl[i];
+                }
+                update_buffer(buf[0], 64*sizeof(float), quant);
+                break;
+              }
+            }
             /* Update the texture with DCT coefficients */
-            update_texture(tex[0], 0, width*8, height, I16_1, img.coef);
+            update_texture(tex[1], 1, width*8, height, I16_1, img.coef);
             /* Perform the horizontal IDCT */
             glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo[0]);
             glViewport(0, 0, width/8, height*8);
