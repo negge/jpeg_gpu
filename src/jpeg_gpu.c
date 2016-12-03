@@ -382,6 +382,7 @@ int main(int argc, char *argv[]) {
   int dump;
   int head;
   jpeg_info info;
+  jpeg_header header;
   image img;
   no_cpu = 0;
   no_gpu = 0;
@@ -477,7 +478,6 @@ int main(int argc, char *argv[]) {
      We will directly decode into these buffers and upload them to the GPU. */
   {
     jpeg_decode_ctx *dec;
-    jpeg_header header;
     dec = (*vtbl.decode_alloc)(&info);
     (*vtbl.decode_header)(dec, &header);
     if (head) {
@@ -904,8 +904,6 @@ int main(int argc, char *argv[]) {
       double time;
 
       if (!no_cpu) {
-        jpeg_header header;
-
         (*vtbl.decode_reset)(dec, &info);
         (*vtbl.decode_header)(dec, &header);
         if ((*vtbl.decode_image)(dec, &img, out) != EXIT_SUCCESS) {
