@@ -631,7 +631,7 @@ int main(int argc, char *argv[]) {
     GLuint vao[NPROGS_MAX];
     double last;
     int frames;
-    int i;
+    int i, j;
     int pixels;
 
     glfwSetErrorCallback(error_callback);
@@ -677,16 +677,25 @@ int main(int argc, char *argv[]) {
             if (!setup_shader(&prog[0], TEX_VS, HORZ_QUANT_GREY_FS)) {
               return EXIT_FAILURE;
             }
+            if (!create_buffer(&buf[0], 64*sizeof(float))) {
+              return EXIT_FAILURE;
+            }
             break;
           }
-          default : {
-            if (!setup_shader(&prog[0], TEX_VS, HORZ_FS)) {
+          case 3 : {
+            if (!setup_shader(&prog[0], TEX_VS, HORZ_QUANT_YUV_FS)) {
+              return EXIT_FAILURE;
+            }
+            if (!bind_int1(prog[0], "u_cstride", img.plane[1].cstride*8)) {
+              return EXIT_FAILURE;
+            }
+            if (!bind_int1(prog[0], "v_cstride", img.plane[2].cstride*8)) {
+              return EXIT_FAILURE;
+            }
+            if (!create_buffer(&buf[0], 3*64*sizeof(float))) {
               return EXIT_FAILURE;
             }
           }
-        }
-        if (!create_buffer(&buf[0], 64*sizeof(float))) {
-          return EXIT_FAILURE;
         }
         if (!create_texture_buffer(&tex[0], 0, buf[0], F32_1)) {
           return EXIT_FAILURE;
@@ -1008,6 +1017,16 @@ int main(int argc, char *argv[]) {
                 }
                 update_buffer(buf[0], 64*sizeof(float), quant);
                 break;
+              }
+              case 3 : {
+                float quant[3*64];
+                for (j = 0; j < 3; j++) {
+                  for (i = 0; i < 64; i++) {
+                    quant[j*64 + i] =
+                     GLJ_REAL_IDCT8X8_SCALES[i]*header.comp[j].quant->tbl[i];
+                  }
+                }
+                update_buffer(buf[0], 3*64*sizeof(float), quant);
               }
             }
             /* Update the texture with DCT coefficients */
