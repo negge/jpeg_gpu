@@ -155,6 +155,29 @@ const texture_format_info TEXTURE_FORMATS[] = {
   { GL_RGBA32F, GL_RGBA,         GL_FLOAT },
 };
 
+static GLint create_buffer(GLuint *buf, int length) {
+  glGenBuffers(1, buf);
+  glBindBuffer(GL_TEXTURE_BUFFER, *buf);
+  glBufferData(GL_TEXTURE_BUFFER, length, NULL, GL_STATIC_DRAW);
+  return GL_TRUE;
+}
+
+static void update_buffer(GLuint buf, int length, GLvoid *data) {
+  glBindBuffer(GL_TEXTURE_BUFFER, buf);
+  glBufferSubData(GL_TEXTURE_BUFFER, 0, length, data);
+}
+
+static GLint create_texture_buffer(GLuint *tex, int id, GLuint buf,
+ texture_format fmt) {
+  GLint internal;
+  internal = TEXTURE_FORMATS[fmt].internal;
+  glGenTextures(1, tex);
+  glActiveTexture(GL_TEXTURE0 + id);
+  glBindTexture(GL_TEXTURE_BUFFER, *tex);
+  glTexBuffer(GL_TEXTURE_BUFFER, internal, buf);
+  return GL_TRUE;
+}
+
 static GLint create_texture(GLuint *tex, int id, int width, int height,
  texture_format fmt) {
   GLint internal;
