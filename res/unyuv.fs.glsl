@@ -25,23 +25,23 @@ void main() {
   int s_u=(y_width>>u_xdec)*(by_u&((1<<u_xdec)-1))+(s>>u_xdec);
   int t_u=y_height+((by_u>>u_xdec)<<3)+((t>>u_ydec)&0x7);
   if ((t_u&0x4)==0) {
-    u=float(texelFetch(low, ivec2(s_u,t_u>>3),0)[t_u&3])+128;
+    u=float(texelFetch(low, ivec2(s_u,t_u>>3),0)[t_u&3]);
   }
   else {
-    u=float(texelFetch(high, ivec2(s_u,t_u>>3),0)[t_u&3])+128;
+    u=float(texelFetch(high, ivec2(s_u,t_u>>3),0)[t_u&3]);
   }
   by_u=((y_height>>(u_ydec+3))+((1<<u_xdec)-1))>>u_xdec;
   int by_v=t>>(v_ydec+3);
   int s_v=(y_width>>v_xdec)*(by_v&((1<<v_xdec)-1))+(s>>v_xdec);
   int t_v=y_height+((by_u+(by_v>>v_xdec))<<3)+((t>>v_ydec)&0x7);
   if ((t_v&0x4)==0) {
-    v=float(texelFetch(low, ivec2(s_v,t_v>>3),0)[t_v&3])+128;
+    v=float(texelFetch(low, ivec2(s_v,t_v>>3),0)[t_v&3]);
   }
   else {
-    v=float(texelFetch(high, ivec2(s_v,t_v>>3),0)[t_v&3])+128;
+    v=float(texelFetch(high, ivec2(s_v,t_v>>3),0)[t_v&3]);
   }
-  float r=y+1.402*(v-128);
-  float g=y-0.34414*(u-128)-0.71414*(v-128);
-  float b=y+1.772*(u-128);
+  float r=y+1.402*v;
+  float g=y-0.34414*u-0.71414*v;
+  float b=y+1.772*u;
   color=vec3(r,g,b)/255.0;
 }
