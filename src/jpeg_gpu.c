@@ -686,10 +686,10 @@ int main(int argc, char *argv[]) {
             if (!setup_shader(&prog[0], TEX_VS, HORZ_QUANT_YUV_FS)) {
               return EXIT_FAILURE;
             }
-            if (!bind_int1(prog[0], "u_cstride", img.plane[1].cstride*8)) {
+            if (!bind_int1(prog[0], "u_cstride", img.plane[0].cstride)) {
               return EXIT_FAILURE;
             }
-            if (!bind_int1(prog[0], "v_cstride", img.plane[2].cstride*8)) {
+            if (!bind_int1(prog[0], "v_cstride", img.plane[1].cstride)) {
               return EXIT_FAILURE;
             }
             if (!create_buffer(&buf[0], 3*64*sizeof(float))) {

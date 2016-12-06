@@ -85,7 +85,7 @@ void main() {
   int u=(s<<6)+j;
   int v=t>>3;
   if (v>u_cstride) j+=64;
-  if (v>v_cstride) j+=64;
+  if (v>u_cstride+v_cstride) j+=64;
   int i;
   float x[8];
   float y[8];
