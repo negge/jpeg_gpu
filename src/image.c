@@ -96,6 +96,21 @@ int image_init(image *img, jpeg_header *header) {
   return EXIT_SUCCESS;
 }
 
+void image_zero(image *img) {
+  int i;
+  int blocks;
+  blocks = 0;
+  for (i = 0; i < img->nplanes; i++) {
+    image_plane *plane;
+    plane = &img->plane[i];
+    memset(plane->data, 0, plane->ystride*plane->height);
+    blocks += ((plane->width >> 3) << plane->xdec)*plane->cstride;
+  }
+  memset(img->pixels, 0, img->width*img->height*3);
+  memset(img->coef, 0, blocks*64*sizeof(short));
+  memset(img->index, 0, blocks*sizeof(int));
+}
+
 void image_clear(image *img) {
   int i;
   for (i = 0; i < img->nplanes; i++) {

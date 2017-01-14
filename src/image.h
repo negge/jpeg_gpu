@@ -51,6 +51,7 @@ struct image {
 };
 
 int image_init(image *img, jpeg_header *header);
+void image_zero(image *img);
 void image_clear(image *img);
 
 #endif

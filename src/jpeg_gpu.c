@@ -1204,6 +1204,7 @@ int main(int argc, char *argv[]) {
       plane = &img.plane[i];
       pixels += (plane->width >> plane->xdec)*(plane->height >> plane->ydec);
     }
+    image_zero(&img);
     while (!glfwWindowShouldClose(window)) {
       int i;
       double time;
