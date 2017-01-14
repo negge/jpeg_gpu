@@ -703,7 +703,9 @@ int main(int argc, char *argv[]) {
     GLuint prog[NPROGS_MAX];
     GLuint vbo[NPROGS_MAX];
     GLuint vao[NPROGS_MAX];
+    double time;
     double last;
+    double cpu;
     int frames;
     int i, j;
     int pixels;
@@ -737,6 +739,7 @@ int main(int argc, char *argv[]) {
     printf("    GLSL: %s\n",glGetString(GL_SHADING_LANGUAGE_VERSION));
     printf("Renderer: %s\n",glGetString(GL_RENDERER));
 
+    if (!no_gpu) {
     switch (out) {
       case JPEG_DECODE_PACK : {
         int width;
@@ -1192,10 +1195,12 @@ int main(int argc, char *argv[]) {
     }
 
     glUseProgram(prog[0]);
+    }
 
     dec = (*vtbl.decode_alloc)(&info);
 
-    last = glfwGetTime();
+    time = last = glfwGetTime();
+    cpu = 0;
     frames = 0;
     /* TODO Compute this based on out */
     pixels = 0;
@@ -1207,7 +1212,6 @@ int main(int argc, char *argv[]) {
     image_zero(&img);
     while (!glfwWindowShouldClose(window)) {
       int i;
-      double time;
 
       if (!no_cpu) {
         (*vtbl.decode_reset)(dec, &info);
@@ -1413,6 +1417,11 @@ int main(int argc, char *argv[]) {
             return EXIT_FAILURE;
           }
         }
+      }
+
+      cpu += glfwGetTime() - time;
+      if (!no_gpu) {
+        glFinish();
 
         glfwSwapBuffers(window);
       }
@@ -1420,19 +1429,17 @@ int main(int argc, char *argv[]) {
       frames++;
       time = glfwGetTime();
       if (time - last >= 1.0) {
-        double avg;
+        double diff;
         char title[255];
-        avg = 1000*(time - last)/frames;
-        if (no_gpu) {
-          sprintf(title, "%s - %4i FPS (%0.3f ms)", NAME, frames, avg);
-        }
-        else {
-          sprintf(title, "%s - %4i FPS (%0.3f ms) %0.3f MBps", NAME, frames,
-           avg, frames*(pixels/1000000.0));
-        }
+        diff = time - last;
+        cpu *= 1000;
+        diff *= 1000;
+        sprintf(title, "%i FPS (cpu %0.3f ms, gpu %0.3f ms, total %.f)",
+         frames, cpu/frames, (diff - cpu)/frames, diff);
         glfwSetWindowTitle(window, title);
         frames = 0;
         last = time;
+        cpu = 0;
       }
 
       glfwPollEvents();
