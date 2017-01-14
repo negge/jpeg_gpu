@@ -840,10 +840,10 @@ int main(int argc, char *argv[]) {
         if (!create_tex_rect(&vao[1], &vbo[1], prog[1], width, height)) {
           return EXIT_FAILURE;
         }
-        if (!create_texture(&tex[3], 3, width, height, I16_4)) {
+        if (!create_texture(&tex[3], 3, width, height, U8_4)) {
           return EXIT_FAILURE;
         }
-        if (!create_texture(&tex[4], 4, width, height, I16_4)) {
+        if (!create_texture(&tex[4], 4, width, height, U8_4)) {
           return EXIT_FAILURE;
         }
         switch (img.nplanes) {

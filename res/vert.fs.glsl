@@ -96,6 +96,6 @@ void main() {
   }
   y[0] += 0.5;
   glj_real_idct8(x, y);
-  v_low=ivec4(x[0],x[1],x[2],x[3]);
-  v_high=ivec4(x[4],x[5],x[6],x[7]);
+  v_low=ivec4(x[0],x[1],x[2],x[3])+ivec4(128);
+  v_high=ivec4(x[4],x[5],x[6],x[7])+ivec4(128);
 }

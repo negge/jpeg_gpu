@@ -8,10 +8,10 @@ void main() {
   int t=int(tex_coord.t);
   float y;
   if ((t&0x4)==0) {
-    y=float(texelFetch(low, ivec2(s,t>>3),0)[t&3])+128;
+    y=float(texelFetch(low, ivec2(s,t>>3),0)[t&3]);
   }
   else {
-    y=float(texelFetch(high, ivec2(s,t>>3),0)[t&3])+128;
+    y=float(texelFetch(high, ivec2(s,t>>3),0)[t&3]);
   }
   color=vec3(y,y,y)/255.0;
 }

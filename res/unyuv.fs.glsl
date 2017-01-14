@@ -21,10 +21,10 @@ void main() {
   float u;
   float v;
   if ((t&0x4)==0) {
-    y=float(texelFetch(low, ivec2(s,t>>3),0)[t&3])+128;
+    y=float(texelFetch(low, ivec2(s,t>>3),0)[t&3]);
   }
   else {
-    y=float(texelFetch(high, ivec2(s,t>>3),0)[t&3])+128;
+    y=float(texelFetch(high, ivec2(s,t>>3),0)[t&3]);
   }
   int by_u=t>>(u_ydec+3);
   int s_u=(y_width>>u_xdec)*(by_u&((1<<u_xdec)-1))+(s>>u_xdec);
@@ -45,6 +45,6 @@ void main() {
   else {
     v=float(texelFetch(high, ivec2(s_v,t_v>>3),0)[t_v&3]);
   }
-  vec3 rgb=yuvColor*vec3(y,u,v);
+  vec3 rgb=yuvColor*vec3(y,u-128,v-128);
   color=rgb/255.0;
 }
