@@ -27,6 +27,7 @@ int image_init(image *img, jpeg_header *header) {
   int i;
   int blocks;
   short *coef;
+  int *index;
   memset(img, 0, sizeof(image));
   img->width = header->width;
   img->height = header->height;
@@ -77,11 +78,20 @@ int image_init(image *img, jpeg_header *header) {
     image_clear(img);
     return EXIT_FAILURE;
   }
+  index = img->index = glj_aligned_malloc(blocks*sizeof(int), IMAGE_ALIGN);
+  if (img->index == NULL) {
+    image_clear(img);
+    return EXIT_FAILURE;
+  }
   for (i = 0; i < img->nplanes; i++) {
+    jpeg_component *comp;
     image_plane *plane;
+    comp = &header->comp[i];
     plane = &img->plane[i];
     plane->coef = coef;
     coef += (plane->width << (plane->xdec + 3))*plane->cstride;
+    plane->index = index;
+    index += (comp->hblocks << plane->xdec)*plane->cstride;
   }
   return EXIT_SUCCESS;
 }
@@ -93,6 +103,7 @@ void image_clear(image *img) {
   }
   glj_aligned_free(img->pixels);
   glj_aligned_free(img->coef);
+  glj_aligned_free(img->index);
   memset(img, 0, sizeof(image));
 }
 

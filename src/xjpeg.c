@@ -446,16 +446,18 @@ static void xjpeg_mcu_init(xjpeg_decode_ctx *ctx, xjpeg_mcu *mcu) {
 
 /* TODO Refactor this function so that we can switch on out before reaching
    the inner loop */
-static void xjpeg_decode_scan(xjpeg_decode_ctx *ctx,
+static void xjpeg_decode_scan(xjpeg_decode_ctx *ctx, short *pack,
  image_plane *plane[NPLANES_MAX], xjpeg_decode_out out) {
   int mcu_counter;
   int rst_counter;
   xjpeg_mcu mcu;
   int mbx;
   int mby;
+  int index;
   mcu_counter = ctx->restart_interval;
   rst_counter = 0;
   xjpeg_mcu_init(ctx, &mcu);
+  index = 0;
   for (mby = 0; mby < ctx->frame.nvmb; mby++) {
     for (mbx = 0; mbx < ctx->frame.nhmb; mbx++) {
       int i;
@@ -478,11 +480,27 @@ static void xjpeg_decode_scan(xjpeg_decode_ctx *ctx,
             mcu.dc_pred[i] += value;
             XJPEG_LOG(("dc_pred = %i\n", pred[i]));
             j = 0;
-            if (out == XJPEG_DECODE_QUANT) {
-              block[0] = mcu.dc_pred[i];
-            }
-            else {
-              block[0] = mcu.dc_pred[i]*mcu.quant[i]->tbl[0];
+            switch (out) {
+              case XJPEG_DECODE_PACK : {
+                int by;
+                int bx;
+                by = (mby*pi->vsamp + sby);
+                bx = (mbx*pi->hsamp + sbx);
+                /*printf("i = %i, by = %i, bx = %i, o = %i, y_stride = %i, index = %i\n",
+                 i, by, bx, by*(ip->ystride >>3) + bx, ip->ystride, index);*/
+                ip->index[by*(ip->ystride >> 3) + bx] = index;
+                ip->packed++;
+                pack[index] = mcu.dc_pred[i] & 0xfff;
+                /*printf("DC = %x, pack = %x, run = %i, value = %i\n", mcu.dc_pred[i], pack[index], pack[index] >> 12, (pack[index] & 0xfff) | (pack[index] & 0x800 == 0x800 ? ~0xfff : 0));*/
+                index++;
+              }
+              case XJPEG_DECODE_QUANT : {
+                block[0] = mcu.dc_pred[i];
+                break;
+              }
+              default : {
+                block[0] = mcu.dc_pred[i]*mcu.quant[i]->tbl[0];
+              }
             }
             do {
               XJPEG_DECODE_VLC(ctx, mcu.ac_huff[i], symbol, value);
@@ -491,14 +509,30 @@ static void xjpeg_decode_scan(xjpeg_decode_ctx *ctx,
                 XJPEG_LOG(("j = %i, offset = %i, value = %i, dequant = %i\n", j,
                  (symbol >> 4) + 1, value, value*mcu.quant[i]->tbl[j]));
                 XJPEG_ERROR(ctx, j > 63, "Error indexing outside block.");
-                if (out == XJPEG_DECODE_QUANT) {
-                  block[DE_ZIG_ZAG[j]] = value;
-                }
-                else {
-                  block[DE_ZIG_ZAG[j]] = value*mcu.quant[i]->tbl[DE_ZIG_ZAG[j]];
+                switch (out) {
+                  case XJPEG_DECODE_PACK : {
+                    ip->packed++;
+                    pack[index] = (((symbol >> 4) & 0xf) << 12) | (value & 0xfff);
+                    /*printf("run = %i, value = %i, pack = %x, run = %i, value = %i\n", (symbol >> 4) & 0xf, (value & 0xfff), pack[index], pack[index] >> 12, (pack[index] & 0xfff) | ((pack[index] & 0x800) == 0x800 ? (unsigned int)~0xfff : 0));*/
+                    index++;
+                    break;
+                  }
+                  case XJPEG_DECODE_QUANT : {
+                    block[DE_ZIG_ZAG[j]] = value;
+                    break;
+                  }
+                  default : {
+                    block[DE_ZIG_ZAG[j]] =
+                     value*mcu.quant[i]->tbl[DE_ZIG_ZAG[j]];
+                  }
                 }
               }
               else {
+                if (out == XJPEG_DECODE_PACK) {
+                  ip->packed++;
+                  pack[index] = 0;
+                  index++;
+                }
                 XJPEG_LOG(("****************** EOB at j = %i\n\n", j));
                 break;
               }
@@ -510,6 +544,9 @@ static void xjpeg_decode_scan(xjpeg_decode_ctx *ctx,
             }
 #endif
             switch (out) {
+              case XJPEG_DECODE_PACK : {
+                break;
+              }
               case XJPEG_DECODE_QUANT :
               case XJPEG_DECODE_DCT : {
                 int by;
@@ -644,10 +681,11 @@ static void xjpeg_decode_sos(xjpeg_decode_ctx *ctx, image *img,
   len -= 3;
   XJPEG_ERROR(ctx, len != 0, "Error decoding SOS, unprocessed bytes.");
   switch (out) {
+    case XJPEG_DECODE_PACK :
     case XJPEG_DECODE_QUANT :
     case XJPEG_DECODE_DCT :
     case XJPEG_DECODE_YUV : {
-      xjpeg_decode_scan(ctx, plane, out);
+      xjpeg_decode_scan(ctx, img->coef, plane, out);
       break;
     }
     default : {

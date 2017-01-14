@@ -27,8 +27,8 @@ See the License for the specific language governing permissions and limitations
 
 #define NAME "jpeg_gpu"
 
-#define NBUFFS_MAX (1)
-#define NTEXTS_MAX (6)
+#define NBUFFS_MAX (3)
+#define NTEXTS_MAX (7)
 #define NPROGS_MAX (3)
 
 float GLJ_REAL_IDCT8X8_SCALES[8*8] = {
@@ -626,6 +626,20 @@ int main(int argc, char *argv[]) {
     if (dump) {
       int i, j, k;
       (*vtbl.decode_image)(dec, &img, out);
+      if (out == JPEG_DECODE_PACK) {
+        img.packed = 0;
+        for (i = 0; i < img.nplanes; i++) {
+          printf("Plane %i Packed Data: %i\n", i, img.plane[i].packed);
+          /*printf("Plane %i hblocks: %i\n", i, header.comp[i].hblocks);
+          printf("Plane %i vblocks: %i\n", i, header.comp[i].vblocks);
+          for (j = 0; j < header.comp[i].hblocks*header.comp[i].vblocks; j++) {
+            printf("  Block %i Index : %i\n", j, img.plane[i].index[j]);
+          }*/
+          img.packed += img.plane[i].packed;
+        }
+        printf("Packed Data : %i\n", img.packed);
+        return EXIT_SUCCESS;
+      }
       for (i = 0; i < img.nplanes; i++) {
         image_plane *plane;
         plane = &img.plane[i];
@@ -668,6 +682,9 @@ int main(int argc, char *argv[]) {
         printf("\n");
       }
       return EXIT_SUCCESS;
+    }
+    if ((*vtbl.decode_image)(dec, &img, out) != EXIT_SUCCESS) {
+      return EXIT_FAILURE;
     }
     (*vtbl.decode_free)(dec);
   }
@@ -721,6 +738,149 @@ int main(int argc, char *argv[]) {
     printf("Renderer: %s\n",glGetString(GL_RENDERER));
 
     switch (out) {
+      case JPEG_DECODE_PACK : {
+        int width;
+        int height;
+        int blocks;
+        width = img.plane[0].width;
+        height = 0;
+        blocks = 0;
+        img.packed = 0;
+        for (i = 0; i < img.nplanes; i++) {
+          height += img.plane[i].cstride;
+          blocks += header.comp[i].hblocks*header.comp[i].vblocks;
+          img.packed += img.plane[i].packed;
+        }
+        switch (img.nplanes) {
+          case 1 : {
+            if (!setup_shader(&prog[0], TEX_VS, HORZ_PACK_GREY_FS)) {
+              return EXIT_FAILURE;
+            }
+            if (!create_buffer(&buf[0], 64*sizeof(float))) {
+              return EXIT_FAILURE;
+            }
+            break;
+          }
+          case 3 : {
+            if (!setup_shader(&prog[0], TEX_VS, HORZ_PACK_YUV_FS)) {
+              return EXIT_FAILURE;
+            }
+            if (!bind_int1(prog[0], "u_cstride", img.plane[0].cstride)) {
+              return EXIT_FAILURE;
+            }
+            if (!bind_int1(prog[0], "v_cstride", img.plane[1].cstride)) {
+              return EXIT_FAILURE;
+            }
+            if (!create_buffer(&buf[0], 3*64*sizeof(float))) {
+              return EXIT_FAILURE;
+            }
+          }
+        }
+        if (!bind_int1(prog[0], "y_stride", img.plane[0].ystride)) {
+          return EXIT_FAILURE;
+        }
+        if (!create_buffer(&buf[1], blocks*sizeof(int))) {
+          return EXIT_FAILURE;
+        }
+        if (!create_buffer(&buf[2], img.packed*sizeof(unsigned short))) {
+          return EXIT_FAILURE;
+        }
+        if (!create_texture_buffer(&tex[0], 0, buf[0], F32_1)) {
+          return EXIT_FAILURE;
+        }
+        if (!create_texture_buffer(&tex[1], 1, buf[1], I32_1)) {
+          return EXIT_FAILURE;
+        }
+        if (!create_texture_buffer(&tex[2], 2, buf[2], U16_1)) {
+          return EXIT_FAILURE;
+        }
+        if (!bind_int1(prog[0], "quant", 0)) {
+          return EXIT_FAILURE;
+        }
+        if (!bind_int1(prog[0], "index", 1)) {
+          return EXIT_FAILURE;
+        }
+        if (!bind_int1(prog[0], "pack", 2)) {
+          return EXIT_FAILURE;
+        }
+        if (!create_tex_rect(&vao[0], &vbo[0], prog[0], width/8, height*8)) {
+          return EXIT_FAILURE;
+        }
+        if (!create_texture(&tex[3], 3, width/8, height*8, F32_4)) {
+          return EXIT_FAILURE;
+        }
+        if (!create_texture(&tex[4], 4, width/8, height*8, F32_4)) {
+          return EXIT_FAILURE;
+        }
+        if (!setup_shader(&prog[1], TEX_VS, VERT_FS)) {
+          return EXIT_FAILURE;
+        }
+        if (!bind_int1(prog[1], "h_low", 3)) {
+           return EXIT_FAILURE;
+        }
+        if (!bind_int1(prog[1], "h_high", 4)) {
+           return EXIT_FAILURE;
+        }
+        if (!create_tex_rect(&vao[1], &vbo[1], prog[1], width, height)) {
+          return EXIT_FAILURE;
+        }
+        if (!create_texture(&tex[5], 5, width, height, I16_4)) {
+         return EXIT_FAILURE;
+        }
+        if (!create_texture(&tex[6], 6, width, height, I16_4)) {
+          return EXIT_FAILURE;
+        }
+        switch (img.nplanes) {
+          case 1 : {
+            if (!setup_shader(&prog[2], TEX_VS, UNGREY_FS)) {
+              return EXIT_FAILURE;
+            }
+            break;
+          }
+          case 3 : {
+            if (!setup_shader(&prog[2], TEX_VS, UNYUV_FS)) {
+              return EXIT_FAILURE;
+            }
+            if (!bind_int1(prog[2], "y_width", img.plane[0].width)) {
+              return EXIT_FAILURE;
+            }
+            if (!bind_int1(prog[2], "y_height", img.plane[0].height)) {
+              return EXIT_FAILURE;
+            }
+            if (!bind_int1(prog[2], "u_xdec", img.plane[1].xdec)) {
+              return EXIT_FAILURE;
+            }
+            if (!bind_int1(prog[2], "u_ydec", img.plane[1].ydec)) {
+              return EXIT_FAILURE;
+            }
+            if (!bind_int1(prog[2], "v_xdec", img.plane[2].xdec)) {
+              return EXIT_FAILURE;
+            }
+            if (!bind_int1(prog[2], "v_ydec", img.plane[2].ydec)) {
+              return EXIT_FAILURE;
+            }
+            break;
+          }
+        }
+        if (!bind_int1(prog[2], "low", 5)) {
+           return EXIT_FAILURE;
+        }
+        if (!bind_int1(prog[2], "high", 6)) {
+           return EXIT_FAILURE;
+        }
+        if (!create_tex_rect(&vao[2], &vbo[2], prog[2], img.width,
+         img.height)) {
+          return EXIT_FAILURE;
+        }
+        glBindFragDataLocation(prog[2], 0, "color");
+        if (!create_framebuffer(&fbo[0], 2, 0, &tex[3])) {
+          return EXIT_FAILURE;
+        }
+        if (!create_framebuffer(&fbo[1], 2, 2, &tex[5])) {
+          return EXIT_FAILURE;
+        }
+        break;
+      }
       case JPEG_DECODE_QUANT : {
         int width;
         int height;
@@ -1058,6 +1218,77 @@ int main(int argc, char *argv[]) {
 
       if (!no_gpu) {
         switch (out) {
+          case JPEG_DECODE_PACK : {
+            int width;
+            int height;
+            int blocks;
+            width = img.plane[0].width;
+            height = 0;
+            blocks = 0;
+            for (i = 0; i < img.nplanes; i++) {
+              height += img.plane[i].cstride;
+              blocks += header.comp[i].hblocks*header.comp[i].vblocks;
+            }
+            /*printf("blocks = %i\n", blocks);
+            for (i = 0; i < blocks; i++) {
+              printf("block %i index %i\n", i, img.index[i]);
+            }
+            for (i = img.index[0]; i < img.index[1]; i++) {
+              printf("packed %i = %i\n", i, img.coef[i]);
+            }*/
+            switch (img.nplanes) {
+              case 1 : {
+                float quant[64];
+                for (i = 0; i < 64; i++) {
+                  quant[i] = GLJ_REAL_IDCT8X8_SCALES[i]*header.quant[0].tbl[i];
+                }
+                update_buffer(buf[0], 64*sizeof(float), quant);
+                break;
+              }
+              case 3 : {
+                float quant[3*64];
+                for (j = 0; j < 3; j++) {
+                  for (i = 0; i < 64; i++) {
+                    quant[j*64 + i] =
+                     GLJ_REAL_IDCT8X8_SCALES[i]*header.comp[j].quant->tbl[i];
+                  }
+                }
+                update_buffer(buf[0], 3*64*sizeof(float), quant);
+                break;
+              }
+              default : {
+               fprintf(stderr,
+                "Unsupported number of planes (%i) for packed output.\n", i);
+               return EXIT_FAILURE;
+              }
+            }
+            /* Update the texture with block indeces */
+            update_buffer(buf[1], blocks*sizeof(int), img.index);
+            update_buffer(buf[2], img.packed*sizeof(unsigned short), img.coef);
+            /* Perform the horizontal IDCT */
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo[0]);
+            glViewport(0, 0, width/8, height*8);
+            glUseProgram(prog[0]);
+            glBindVertexArray(vao[0]);
+            glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
+            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+            /* Perform the vertical IDCT */
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo[1]);
+            glViewport(0, 0, width, height);
+            glUseProgram(prog[1]);
+            glBindVertexArray(vao[1]);
+            glBindBuffer(GL_ARRAY_BUFFER, vbo[1]);
+            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+            /* Unpack the coefficients and display them */
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glViewport(0, 0, window_width, window_height);
+            glUseProgram(prog[2]);
+            glBindVertexArray(vao[2]);
+            glBindBuffer(GL_ARRAY_BUFFER, vbo[2]);
+            glClear(GL_COLOR_BUFFER_BIT);
+            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+            break;
+          }
           case JPEG_DECODE_QUANT : {
             int width;
             int height;
