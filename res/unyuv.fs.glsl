@@ -9,6 +9,11 @@ uniform int v_xdec;
 uniform int v_ydec;
 uniform isampler2D low;
 uniform isampler2D high;
+mat3 yuvColor = mat3(
+  1.0,    1.0,     1.0,
+  0.0,   -0.34414, 1.772,
+  1.402, -0.71414, 0.0
+);
 void main() {
   int s=int(tex_coord.s);
   int t=int(tex_coord.t);
@@ -40,8 +45,6 @@ void main() {
   else {
     v=float(texelFetch(high, ivec2(s_v,t_v>>3),0)[t_v&3]);
   }
-  float r=y+1.402*v;
-  float g=y-0.34414*u-0.71414*v;
-  float b=y+1.772*u;
-  color=vec3(r,g,b)/255.0;
+  vec3 rgb=yuvColor*vec3(y,u,v);
+  color=rgb/255.0;
 }
