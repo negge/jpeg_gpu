@@ -6,12 +6,14 @@ uniform isampler2D high;
 void main() {
   int s=int(tex_coord.s);
   int t=int(tex_coord.t);
+  int v=t>>3;
+  int j=t%8;
   float y;
-  if ((t&0x4)==0) {
-    y=float(texelFetch(low, ivec2(s,t>>3),0)[t&3]);
+  if (j<4) {
+    y=float(texelFetch(low, ivec2(s,v),0)[j]);
   }
   else {
-    y=float(texelFetch(high, ivec2(s,t>>3),0)[t&3]);
+    y=float(texelFetch(high, ivec2(s,v),0)[j-4]);
   }
   color=vec3(y,y,y)/255.0;
 }

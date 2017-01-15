@@ -84,14 +84,15 @@ void main() {
   int i;
   float x[8];
   float y[8];
-  if ((s&0x4)==0) {
+  int j=s%8;
+  if (j<4) {
     for (i = 0; i < 8; i++) {
-      y[7-i]=texelFetch(h_low,ivec2(u,v+i),0)[s&3];
+      y[7-i]=texelFetch(h_low,ivec2(u,v+i),0)[j];
     }
   }
   else {
     for (i = 0; i < 8; i++) {
-      y[7-i]=texelFetch(h_high,ivec2(u,v+i),0)[s&3];
+      y[7-i]=texelFetch(h_high,ivec2(u,v+i),0)[j-4];
     }
   }
   y[0] += 0.5;
