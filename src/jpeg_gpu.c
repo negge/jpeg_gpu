@@ -172,6 +172,7 @@ typedef enum texture_format {
   I16_1,
   I16_4,
   U16_1,
+  U16_4,
   I32_1,
   U32_1,
   F32_1,
@@ -187,16 +188,17 @@ struct texture_format_info {
 };
 
 const texture_format_info TEXTURE_FORMATS[] = {
-  { GL_R8UI,    GL_RED_INTEGER,  GL_UNSIGNED_BYTE },
-  { GL_RGB8UI,  GL_RGB_INTEGER,  GL_UNSIGNED_BYTE },
-  { GL_RGBA8UI, GL_RGBA_INTEGER, GL_UNSIGNED_BYTE },
-  { GL_R16I,    GL_RED_INTEGER,  GL_SHORT },
-  { GL_RGBA16I, GL_RGBA_INTEGER, GL_SHORT },
-  { GL_R16UI,   GL_RED_INTEGER,  GL_UNSIGNED_SHORT },
-  { GL_R32I,    GL_RED_INTEGER,  GL_INT },
-  { GL_R32UI,   GL_RED_INTEGER,  GL_UNSIGNED_INT },
-  { GL_R32F,    GL_RED,          GL_FLOAT },
-  { GL_RGBA32F, GL_RGBA,         GL_FLOAT },
+  { GL_R8UI,     GL_RED_INTEGER,  GL_UNSIGNED_BYTE },
+  { GL_RGB8UI,   GL_RGB_INTEGER,  GL_UNSIGNED_BYTE },
+  { GL_RGBA8UI,  GL_RGBA_INTEGER, GL_UNSIGNED_BYTE },
+  { GL_R16I,     GL_RED_INTEGER,  GL_SHORT },
+  { GL_RGBA16I,  GL_RGBA_INTEGER, GL_SHORT },
+  { GL_R16UI,    GL_RED_INTEGER,  GL_UNSIGNED_SHORT },
+  { GL_RGBA16UI, GL_RED_INTEGER,  GL_UNSIGNED_SHORT },
+  { GL_R32I,     GL_RED_INTEGER,  GL_INT },
+  { GL_R32UI,    GL_RED_INTEGER,  GL_UNSIGNED_INT },
+  { GL_R32F,     GL_RED,          GL_FLOAT },
+  { GL_RGBA32F,  GL_RGBA,         GL_FLOAT },
 };
 
 static GLint create_buffer(GLuint *buf, int length) {
@@ -327,6 +329,19 @@ static void print_texture(GLuint tex, int width, int height,
       for (j = 0; j < height; j++) {
         for (i = 0; i < width; i++) {
           printf("%s%4i", i > 0 ? ", " : "", pixels[j*width + i]);
+        }
+        printf("\n");
+      }
+      break;
+    }
+    case U16_4 : {
+      unsigned short *pixels;
+      glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA_INTEGER, GL_UNSIGNED_SHORT, buf);
+      pixels = buf;
+      for (j = 0; j < height; j++) {
+        for (i = 0; i < width*4; i++) {
+          printf("%s%4i%s", i%4 == 0 ? "(" : "", pixels[j*width*4 + i],
+           (i + 1)%4 == 0 ? ") " : ", ");
         }
         printf("\n");
       }
